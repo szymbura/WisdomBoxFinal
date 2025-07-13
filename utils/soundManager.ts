@@ -55,7 +55,7 @@ class SoundManager {
     try {
       console.log('🔊 Loading custom click sound from GitHub...');
       
-      const response = await fetch('https://raw.githubusercontent.com/szymbura/EVS-WISDOM-BOX/main/sound%20for%20clkc.mp3');
+      const response = await fetch('https://raw.githubusercontent.com/szymbura/WisdomBoxFinal/main/11L-Create_a_short%2C_soft-1752403098790.mp3');
       
       if (!response.ok) {
         throw new Error(`Failed to fetch sound: ${response.status}`);
