@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
 import { useState, useRef } from 'react';
-import { Animated, PanGestureHandler, State } from 'react-native-gesture-handler';
+import { Animated } from 'react-native';
 import { ChevronLeft, ChevronRight, BookOpen, Chrome as Home } from 'lucide-react-native';
 import { router } from 'expo-router';
 import SoundManager from '@/utils/soundManager';
