@@ -1,119 +1,94 @@
-class SoundManager {
-  private static instance: SoundManager;
-  private audioContext: AudioContext | null = null;
-  private isEnabled: boolean = true;
-  private isInitialized: boolean = false;
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { useState } from 'react';
+import { ChevronRight, ChevronDown } from 'lucide-react-native';
 
-  private constructor() {}
-
-  static getInstance(): SoundManager {
-    if (!SoundManager.instance) {
-      SoundManager.instance = new SoundManager();
-    }
-    return SoundManager.instance;
-  }
-
-  // Initialize audio context with user interaction
-  async initializeAudio(): Promise<boolean> {
-    try {
-      console.log('🔊 Initializing audio context...');
-      
-      if (!this.audioContext) {
-        this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      }
-
-      // Resume if suspended (browser autoplay policy)
-      if (this.audioContext.state === 'suspended') {
-        console.log('🔊 Resuming suspended audio context...');
-        await this.audioContext.resume();
-      }
-
-      this.isInitialized = true;
-      console.log('🔊 Audio context initialized successfully, state:', this.audioContext.state);
-      
-      return true;
-    } catch (error) {
-      console.error('🔊 Failed to initialize audio:', error);
-      return false;
-    }
-  }
-
-  // Play the click sound with instant response
-  async playClickSound() {
-    // Click sounds have been disabled
-    console.log('🔊 Click sounds are disabled');
-  }
-
-  // Legacy methods for compatibility
-  async loadSounds() {
-    console.log('🔊 Sound manager ready - sounds will be loaded on demand');
-  }
-
-  async playLoadingSound() {
-    if (!this.isInitialized) {
-      await this.initializeAudio();
-    }
-    console.log('🔊 Playing loading sound...');
-    await this.playTone(600, 0.3, 0.06);
-  }
-
-  async playSuccessSound() {
-    if (!this.isInitialized) {
-      await this.initializeAudio();
-    }
-    console.log('🔊 Playing success sound...');
-    await this.playTone(1000, 0.5, 0.12);
-  }
-
-  // Play a tone with specified frequency, duration, and volume
-  private async playTone(frequency: number, duration: number, volume: number = 0.1): Promise<void> {
-    try {
-      if (!this.audioContext || !this.isEnabled) {
-        return;
-      }
-
-      if (this.audioContext.state === 'suspended') {
-        await this.audioContext.resume();
-      }
-
-      const oscillator = this.audioContext.createOscillator();
-      const gainNode = this.audioContext.createGain();
-      
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
-      
-      gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-      gainNode.gain.linearRampToValueAtTime(volume, this.audioContext.currentTime + 0.01);
-      gainNode.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + duration - 0.01);
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
-      
-      oscillator.start(this.audioContext.currentTime);
-      oscillator.stop(this.audioContext.currentTime + duration);
-      
-    } catch (error) {
-      console.error('🔊 Error playing tone:', error);
-    }
-  }
-
-  setEnabled(enabled: boolean) {
-    this.isEnabled = enabled;
-    console.log(`🔊 Audio ${enabled ? 'enabled' : 'disabled'}`);
-  }
-
-  async cleanup() {
-    try {
-      if (this.audioContext) {
-        await this.audioContext.close();
-        this.audioContext = null;
-      }
-      this.isInitialized = false;
-      console.log('🔊 Audio cleanup completed');
-    } catch (error) {
-      console.error('🔊 Error during audio cleanup:', error);
-    }
-  }
+interface InteractiveSection {
+  title: string;
+  text: string;
 }
 
-export default SoundManager;
+interface InteractiveArticleProps {
+  sections: InteractiveSection[];
+}
+
+export function InteractiveArticle({ sections }: InteractiveArticleProps) {
+  const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set([0]));
+
+  const toggleSection = (index: number) => {
+    const newExpanded = new Set(expandedSections);
+    if (newExpanded.has(index)) {
+      newExpanded.delete(index);
+    } else {
+      newExpanded.add(index);
+    }
+    setExpandedSections(newExpanded);
+  };
+
+  return (
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {sections.map((section, index) => {
+        const isExpanded = expandedSections.has(index);
+        
+        return (
+          <View key={index} style={styles.section}>
+            <TouchableOpacity
+              style={styles.sectionHeader}
+              onPress={() => toggleSection(index)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.sectionTitle}>{section.title}</Text>
+              {isExpanded ? (
+                <ChevronDown size={20} color="#3b82f6" />
+              ) : (
+                <ChevronRight size={20} color="#64748b" />
+              )}
+            </TouchableOpacity>
+            
+            {isExpanded && (
+              <View style={styles.sectionContent}>
+                <Text style={styles.sectionText}>{section.text}</Text>
+              </View>
+            )}
+          </View>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+  },
+  section: {
+    marginBottom: 16,
+    backgroundColor: '#1e293b',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+    overflow: 'hidden',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#334155',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+    flex: 1,
+    marginRight: 12,
+  },
+  sectionContent: {
+    padding: 16,
+  },
+  sectionText: {
+    fontSize: 14,
+    color: '#cbd5e1',
+    lineHeight: 22,
+  },
+});

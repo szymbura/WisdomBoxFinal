@@ -1,119 +1,118 @@
-class SoundManager {
-  private static instance: SoundManager;
-  private audioContext: AudioContext | null = null;
-  private isEnabled: boolean = true;
-  private isInitialized: boolean = false;
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Monitor, Camera, Radio, Video, Tv, Server } from 'lucide-react-native';
+import { Product } from '@/data/evsData';
 
-  private constructor() {}
-
-  static getInstance(): SoundManager {
-    if (!SoundManager.instance) {
-      SoundManager.instance = new SoundManager();
-    }
-    return SoundManager.instance;
-  }
-
-  // Initialize audio context with user interaction
-  async initializeAudio(): Promise<boolean> {
-    try {
-      console.log('🔊 Initializing audio context...');
-      
-      if (!this.audioContext) {
-        this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      }
-
-      // Resume if suspended (browser autoplay policy)
-      if (this.audioContext.state === 'suspended') {
-        console.log('🔊 Resuming suspended audio context...');
-        await this.audioContext.resume();
-      }
-
-      this.isInitialized = true;
-      console.log('🔊 Audio context initialized successfully, state:', this.audioContext.state);
-      
-      return true;
-    } catch (error) {
-      console.error('🔊 Failed to initialize audio:', error);
-      return false;
-    }
-  }
-
-  // Play the click sound with instant response
-  async playClickSound() {
-    // Click sounds have been disabled
-    console.log('🔊 Click sounds are disabled');
-  }
-
-  // Legacy methods for compatibility
-  async loadSounds() {
-    console.log('🔊 Sound manager ready - sounds will be loaded on demand');
-  }
-
-  async playLoadingSound() {
-    if (!this.isInitialized) {
-      await this.initializeAudio();
-    }
-    console.log('🔊 Playing loading sound...');
-    await this.playTone(600, 0.3, 0.06);
-  }
-
-  async playSuccessSound() {
-    if (!this.isInitialized) {
-      await this.initializeAudio();
-    }
-    console.log('🔊 Playing success sound...');
-    await this.playTone(1000, 0.5, 0.12);
-  }
-
-  // Play a tone with specified frequency, duration, and volume
-  private async playTone(frequency: number, duration: number, volume: number = 0.1): Promise<void> {
-    try {
-      if (!this.audioContext || !this.isEnabled) {
-        return;
-      }
-
-      if (this.audioContext.state === 'suspended') {
-        await this.audioContext.resume();
-      }
-
-      const oscillator = this.audioContext.createOscillator();
-      const gainNode = this.audioContext.createGain();
-      
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
-      
-      gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-      gainNode.gain.linearRampToValueAtTime(volume, this.audioContext.currentTime + 0.01);
-      gainNode.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + duration - 0.01);
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
-      
-      oscillator.start(this.audioContext.currentTime);
-      oscillator.stop(this.audioContext.currentTime + duration);
-      
-    } catch (error) {
-      console.error('🔊 Error playing tone:', error);
-    }
-  }
-
-  setEnabled(enabled: boolean) {
-    this.isEnabled = enabled;
-    console.log(`🔊 Audio ${enabled ? 'enabled' : 'disabled'}`);
-  }
-
-  async cleanup() {
-    try {
-      if (this.audioContext) {
-        await this.audioContext.close();
-        this.audioContext = null;
-      }
-      this.isInitialized = false;
-      console.log('🔊 Audio cleanup completed');
-    } catch (error) {
-      console.error('🔊 Error during audio cleanup:', error);
-    }
-  }
+interface ProductCardProps {
+  product: Product;
+  onPress: () => void;
 }
 
-export default SoundManager;
+const iconMap = {
+  monitor: Monitor,
+  camera: Camera,
+  radio: Radio,
+  video: Video,
+  tv: Tv,
+  server: Server,
+  cpu: Server, // fallback for cpu icon
+};
+
+export function ProductCard({ product, onPress }: ProductCardProps) {
+  const IconComponent = iconMap[product.icon as keyof typeof iconMap] || Monitor;
+
+  return (
+    <TouchableOpacity 
+      style={styles.card} 
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <View style={styles.iconContainer}>
+        <IconComponent size={32} color="#3b82f6" />
+      </View>
+      
+      <View style={styles.content}>
+        <Text style={styles.title}>{product.title}</Text>
+        <Text style={styles.description} numberOfLines={2}>
+          {product.description}
+        </Text>
+        
+        <View style={styles.footer}>
+          <View style={styles.statusContainer}>
+            <View style={[
+              styles.statusDot,
+              { backgroundColor: product.status === 'online' ? '#10b981' : '#ef4444' }
+            ]} />
+            <Text style={styles.statusText}>
+              {product.status.charAt(0).toUpperCase() + product.status.slice(1)}
+            </Text>
+          </View>
+          
+          <Text style={styles.articleCount}>
+            {product.wisdomBlocks.length} articles
+          </Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: '#1e293b',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#334155',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  content: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginBottom: 4,
+  },
+  description: {
+    fontSize: 14,
+    color: '#cbd5e1',
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
+  },
+  statusText: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  articleCount: {
+    fontSize: 12,
+    color: '#64748b',
+  },
+});
