@@ -14,7 +14,7 @@ interface FlipBookProps {
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-export default function FlipBook({ pages }: FlipBookProps) {
+export function FlipBook({ pages }: FlipBookProps) {
   const [currentPage, setCurrentPage] = useState(0);
   const [isFlipping, setIsFlipping] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
