@@ -53,9 +53,9 @@ class SoundManager {
     this.isLoadingSound = true;
     
     try {
-      console.log('🔊 Loading custom click sound from GitHub...');
+      console.log('🔊 Loading optimized click sound...');
       
-      const response = await fetch('/11L-Create_a_short%2C_soft-1752403098790.mp3');
+      const response = await fetch('/optimized-click-sound.mp3');
       
       if (!response.ok) {
         throw new Error(`Failed to fetch sound: ${response.status}`);
@@ -69,11 +69,11 @@ class SoundManager {
       
       if (this.audioContext) {
         this.clickSoundBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
-        console.log('🔊 Custom click sound loaded successfully!');
+        console.log('🔊 Optimized click sound loaded successfully!');
       }
       
     } catch (error) {
-      console.error('🔊 Failed to load custom click sound:', error);
+      console.error('🔊 Failed to load optimized click sound:', error);
       console.log('🔊 Will fall back to generated click sound');
     } finally {
       this.isLoadingSound = false;
