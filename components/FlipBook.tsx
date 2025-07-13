@@ -26,10 +26,11 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
   const translateX = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  console.log('FlipBook component loaded with pages:', pages.length);
+  console.log('FlipBook - Component loaded with pages:', pages.length);
+  console.log('FlipBook - Pages data:', pages.map(p => ({ title: p.title, content: p.content.substring(0, 50) + '...' })));
 
   const handlePageTurn = (direction: 'next' | 'prev') => {
-    console.log('Page turn:', direction, 'current page:', currentPage);
+    console.log('FlipBook - Page turn:', direction, 'current page:', currentPage);
     soundManager.playClickSound();
     
     // Page turn animation
@@ -55,7 +56,7 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
 
   const formatContent = (content: string) => {
     if (!content) {
-      console.log('No content provided for formatting');
+      console.log('FlipBook - No content provided for formatting');
       return [<Text key="empty" style={styles.paragraphText}>No content available</Text>];
     }
     
@@ -82,15 +83,19 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
   const currentPageData = pages[currentPage];
   
   if (!currentPageData) {
-    console.log('No current page data available');
+    console.log('FlipBook - No current page data available, currentPage:', currentPage, 'pages length:', pages.length);
     return (
       <View style={styles.container}>
-        <Text style={{ color: 'white', textAlign: 'center', marginTop: 100 }}>
-          No content available
-        </Text>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>
+            No content available (Page {currentPage + 1} of {pages.length})
+          </Text>
+        </View>
       </View>
     );
   }
+
+  console.log('FlipBook - Rendering page:', currentPage + 1, 'Title:', currentPageData.title);
 
   return (
     <View style={styles.container}>

@@ -41,7 +41,8 @@ export default function ProductScreen() {
           <TouchableOpacity 
             style={styles.flipbookButton}
             onPress={() => {
-              console.log('Opening flipbook for:', product.id);
+              console.log('ProductScreen - Opening flipbook for:', product.id);
+              console.log('ProductScreen - Product wisdom blocks:', product.wisdomBlocks.length);
               router.push(`/flipbook/${product.id}`);
             }}
           >
