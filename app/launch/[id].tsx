@@ -1,347 +1,514 @@
-class SoundManager {
-  private static instance: SoundManager;
-  private audioContext: AudioContext | null = null;
-  private isEnabled: boolean = true;
-  private isInitialized: boolean = false;
-  private clickSoundBuffer: AudioBuffer | null = null;
-  private volume: number = 0.3; // Default volume (30%)
-  private userPreferences = {
-    clickSoundsEnabled: true,
-    volume: 0.3
+import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { useLocalSearchParams, router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { ArrowLeft, ExternalLink, CircleCheck as CheckCircle, CircleAlert as AlertCircle } from 'lucide-react-native';
+import { useState, useEffect, useRef } from 'react';
+import { evsProducts } from '@/data/evsData';
+import SoundManager from '@/utils/soundManager';
+
+type LoadingStep = {
+  message: string;
+  duration: number;
+};
+
+export default function LaunchScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const [launchStatus, setLaunchStatus] = useState<'loading' | 'success' | 'error' | 'complete'>('loading');
+  const [currentStep, setCurrentStep] = useState(0);
+  const [showWelcome, setShowWelcome] = useState(false);
+  
+  const soundManager = SoundManager.getInstance();
+  const product = evsProducts.find(p => p.id === id);
+  
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const spinValue = useRef(new Animated.Value(0)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const successAnim = useRef(new Animated.Value(0)).current;
+  const welcomeAnim = useRef(new Animated.Value(0)).current;
+
+  const loadingSteps: LoadingStep[] = [
+    { message: 'Loading resources...', duration: 600 },
+    { message: 'Preparing interface...', duration: 500 },
+    { message: 'Connecting to database...', duration: 700 },
+    { message: 'Loading articles...', duration: 600 },
+    { message: `${product?.title} successfully initialized`, duration: 500 }
+  ];
+
+  // Spinning animation for loader
+  useEffect(() => {
+    const spinAnimation = Animated.loop(
+      Animated.timing(spinValue, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      })
+    );
+    spinAnimation.start();
+    return () => spinAnimation.stop();
+  }, []);
+
+  // Main loading sequence
+  useEffect(() => {
+    // Initialize sound manager
+    soundManager.loadSounds();
+    
+    if (launchStatus !== 'loading') return;
+
+    const runLoadingSequence = async () => {
+      // Play short loading sound at the start
+      console.log('🔊 Playing loading sound...');
+      await soundManager.playLoadingSound();
+      
+      // Simulate random failure (10% chance)
+      const shouldFail = Math.random() < 0.1;
+      
+      for (let i = 0; i < loadingSteps.length; i++) {
+        if (shouldFail && i === 2) {
+          // Fail at database connection step
+          setLaunchStatus('error');
+          return;
+        }
+        
+        setCurrentStep(i);
+        
+        // Animate progress bar
+        Animated.timing(progressAnim, {
+          toValue: (i + 1) / loadingSteps.length,
+          duration: loadingSteps[i].duration,
+          useNativeDriver: false,
+        }).start();
+        
+        await new Promise(resolve => setTimeout(resolve, loadingSteps[i].duration));
+      }
+      
+      // Success sequence
+      soundManager.playSuccessSound();
+      setLaunchStatus('success');
+      
+      // Success animation
+      Animated.sequence([
+        Animated.timing(successAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.delay(800),
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        })
+      ]).start(() => {
+        setLaunchStatus('complete');
+        setShowWelcome(true);
+        
+        // Welcome message animation
+        Animated.timing(welcomeAnim, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }).start();
+      });
+    };
+
+    runLoadingSequence();
+  }, [launchStatus]);
+
+  const handleRetry = () => {
+    setLaunchStatus('loading');
+    setCurrentStep(0);
+    fadeAnim.setValue(1);
+    progressAnim.setValue(0);
+    successAnim.setValue(0);
+    welcomeAnim.setValue(0);
+    setShowWelcome(false);
   };
-  private isLoadingSound: boolean = false;
-  private preloadAttempted: boolean = false;
 
-  private constructor() {}
+  const handleViewArticles = () => {
+    router.push(`/product/${id}`);
+  };
 
-  static getInstance(): SoundManager {
-    if (!SoundManager.instance) {
-      SoundManager.instance = new SoundManager();
-    }
-    return SoundManager.instance;
+  if (!product) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>Product not found</Text>
+      </View>
+    );
   }
 
-  // Initialize audio context with user interaction
-  async initializeAudio(): Promise<boolean> {
-    try {
-      console.log('🔊 Initializing audio context...');
+  const spin = spinValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  return (
+    <View style={styles.container}>
+      <StatusBar style="light" />
       
-      if (!this.audioContext) {
-        this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      }
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <ArrowLeft size={24} color="#ffffff" />
+        </TouchableOpacity>
+        <Text style={styles.title}>Launch {product.title}</Text>
+      </View>
 
-      // Resume if suspended (browser autoplay policy)
-      if (this.audioContext.state === 'suspended') {
-        console.log('🔊 Resuming suspended audio context...');
-        await this.audioContext.resume();
-      }
+      {/* Loading Screen */}
+      {(launchStatus === 'loading' || launchStatus === 'success') && (
+        <Animated.View style={[styles.loadingContainer, { opacity: fadeAnim }]}>
+          <View style={styles.loadingContent}>
+            
+            {launchStatus === 'loading' && (
+              <>
+                {/* Animated Spinner */}
+                <Animated.View style={[styles.spinner, { transform: [{ rotate: spin }] }]}>
+                  <View style={styles.spinnerOuter}>
+                    <View style={styles.spinnerInner} />
+                  </View>
+                </Animated.View>
 
-      this.isInitialized = true;
-      console.log('🔊 Audio context initialized successfully, state:', this.audioContext.state);
-      
-      // Preload click sound after initialization
-      if (!this.preloadAttempted) {
-        this.preloadClickSound();
-      }
-      
-      return true;
-    } catch (error) {
-      console.error('🔊 Failed to initialize audio:', error);
-      return false;
-    }
-  }
+                {/* Progress Bar */}
+                <View style={styles.progressContainer}>
+                  <View style={styles.progressTrack}>
+                    <Animated.View 
+                      style={[
+                        styles.progressFill,
+                        {
+                          width: progressAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: ['0%', '100%'],
+                          })
+                        }
+                      ]} 
+                    />
+                  </View>
+                </View>
 
-  // Preload the click sound for instant playback
-  private async preloadClickSound(): Promise<void> {
-    if (this.preloadAttempted || this.isLoadingSound) {
-      return;
-    }
+                {/* Status Message */}
+                <Text style={styles.loadingMessage}>
+                  {loadingSteps[currentStep]?.message}
+                </Text>
 
-    this.preloadAttempted = true;
-    await this.loadClickSound();
-  }
+                {/* Pulsing Dots */}
+                <View style={styles.dotsContainer}>
+                  {[0, 1, 2].map((index) => (
+                    <Animated.View
+                      key={index}
+                      style={[
+                        styles.dot,
+                        {
+                          opacity: progressAnim.interpolate({
+                            inputRange: [0, 0.33, 0.66, 1],
+                            outputRange: index === 0 ? [0.3, 1, 0.3, 0.3] : 
+                                       index === 1 ? [0.3, 0.3, 1, 0.3] : 
+                                       [0.3, 0.3, 0.3, 1],
+                          })
+                        }
+                      ]}
+                    />
+                  ))}
+                </View>
+              </>
+            )}
 
-  // Play the click sound with instant response
-  async playClickSound() {
-    if (!this.userPreferences.clickSoundsEnabled || !this.isEnabled) {
-      return;
-    }
+            {launchStatus === 'success' && (
+              <Animated.View style={[styles.successContainer, { 
+                opacity: successAnim,
+                transform: [{ scale: successAnim }]
+              }]}>
+                <CheckCircle size={80} color="#10b981" />
+                <Text style={styles.successTitle}>Initialization Complete!</Text>
+                <Text style={styles.successMessage}>
+                  {product.title} is ready to use
+                </Text>
+              </Animated.View>
+            )}
+          </View>
+        </Animated.View>
+      )}
 
-    if (!this.isInitialized) {
-      await this.initializeAudio();
-    }
+      {/* Error State */}
+      {launchStatus === 'error' && (
+        <View style={styles.errorContainer}>
+          <AlertCircle size={64} color="#ef4444" style={styles.errorIcon} />
+          <Text style={styles.errorTitle}>Initialization Failed</Text>
+          <Text style={styles.errorDescription}>
+            Failed to connect to database. Please check your network connection and try again.
+          </Text>
+          <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+            <Text style={styles.retryButtonText}>Retry Initialization</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
-    try {
-      if (this.clickSoundBuffer) {
-        // Use pre-loaded buffer for instant response
-        await this.playBufferedSound(this.clickSoundBuffer);
-      } else {
-        // Fallback to generated tone
-        await this.playTone(800, 0.15, this.userPreferences.volume * 0.5);
-      }
-    } catch (error) {
-      console.warn('🔊 Click sound failed, using fallback');
-      await this.playTone(800, 0.15, this.userPreferences.volume * 0.5);
-    }
-  }
+      {/* Welcome Screen */}
+      {launchStatus === 'complete' && showWelcome && (
+        <Animated.View style={[styles.welcomeContainer, { 
+          opacity: welcomeAnim,
+          transform: [{ 
+            translateY: welcomeAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [50, 0],
+            })
+          }]
+        }]}>
+          <View style={styles.welcomeContent}>
+            <View style={styles.welcomeIcon}>
+              <CheckCircle size={48} color="#10b981" />
+            </View>
+            
+            <Text style={styles.welcomeTitle}>Welcome to {product.title}</Text>
+            <Text style={styles.welcomeDescription}>
+              Access comprehensive knowledge base, troubleshooting guides, and best practices.
+            </Text>
 
-  // Load click sound for better performance
-  async loadClickSound(): Promise<void> {
-    if (!this.audioContext || this.clickSoundBuffer) {
-      return;
-    }
+            <TouchableOpacity style={styles.articlesButton} onPress={handleViewArticles}>
+              <Text style={styles.articlesButtonText}>View Articles</Text>
+              <ExternalLink size={20} color="#ffffff" style={styles.buttonIcon} />
+            </TouchableOpacity>
 
-    try {
-      // Generate a professional click sound buffer
-      this.clickSoundBuffer = await this.generateClickSoundBuffer();
-      console.log('🔊 Click sound buffer loaded');
-    } catch (error) {
-      console.warn('🔊 Failed to load click sound buffer:', error);
-    }
-  }
-
-  // Generate a professional click sound buffer
-  private async generateClickSoundBuffer(): Promise<AudioBuffer> {
-    if (!this.audioContext) {
-      throw new Error('Audio context not initialized');
-    }
-
-    const sampleRate = this.audioContext.sampleRate;
-    const duration = 0.15; // 150ms - professional and quick
-    const length = sampleRate * duration;
-    const buffer = this.audioContext.createBuffer(1, length, sampleRate);
-    const data = buffer.getChannelData(0);
-
-    // Create a subtle, professional click sound
-    for (let i = 0; i < length; i++) {
-      const t = i / sampleRate;
-      
-      // Multi-layered sound for richness
-      const freq1 = 1200; // Primary frequency
-      const freq2 = 2400; // Harmonic
-      const freq3 = 600;  // Sub-harmonic
-      
-      // Exponential decay envelope for natural sound
-      const envelope = Math.exp(-t * 15);
-      
-      // Combine frequencies with different weights
-      const wave1 = Math.sin(2 * Math.PI * freq1 * t) * 0.6;
-      const wave2 = Math.sin(2 * Math.PI * freq2 * t) * 0.2;
-      const wave3 = Math.sin(2 * Math.PI * freq3 * t) * 0.2;
-      
-      data[i] = (wave1 + wave2 + wave3) * envelope * 0.3; // Keep it subtle
-    }
-
-    return buffer;
-  }
-
-  // Play a buffered sound for instant response
-  private async playBufferedSound(buffer: AudioBuffer): Promise<void> {
-    if (!this.audioContext) {
-      return;
-    }
-
-    if (this.audioContext.state === 'suspended') {
-      await this.audioContext.resume();
-    }
-
-    const source = this.audioContext.createBufferSource();
-    const gainNode = this.audioContext.createGain();
-    
-    source.buffer = buffer;
-    gainNode.gain.setValueAtTime(this.userPreferences.volume, this.audioContext.currentTime);
-    
-    source.connect(gainNode);
-    gainNode.connect(this.audioContext.destination);
-    
-    source.start(0);
-  }
-
-  // User preference controls
-  setClickSoundsEnabled(enabled: boolean): void {
-    this.userPreferences.clickSoundsEnabled = enabled;
-    console.log(`🔊 Click sounds ${enabled ? 'enabled' : 'disabled'}`);
-  }
-
-  setVolume(volume: number): void {
-    this.userPreferences.volume = Math.max(0, Math.min(1, volume));
-    console.log(`🔊 Volume set to ${Math.round(this.userPreferences.volume * 100)}%`);
-  }
-
-  getClickSoundsEnabled(): boolean {
-    return this.userPreferences.clickSoundsEnabled;
-  }
-
-  getVolume(): number {
-    return this.userPreferences.volume;
-  }
-
-  // Play the custom WAV click sound
-  private async playCustomClickSound(): Promise<void> {
-    try {
-      if (!this.audioContext || !this.clickSoundBuffer) {
-        throw new Error('Audio context or buffer not available');
-      }
-
-      if (this.audioContext.state === 'suspended') {
-        await this.audioContext.resume();
-      }
-
-      // Create audio source from buffer
-      const source = this.audioContext.createBufferSource();
-      const gainNode = this.audioContext.createGain();
-      
-      source.buffer = this.clickSoundBuffer;
-      
-      // Set volume for comfortable listening (adjust as needed)
-      gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
-      
-      // Connect nodes
-      source.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
-      
-      // Play the sound
-      source.start(this.audioContext.currentTime);
-      
-      console.log('🔊 Playing custom WAV click sound');
-      
-    } catch (error) {
-      console.error('🔊 Error playing custom click sound:', error);
-      throw error;
-    }
-  }
-
-  // Fallback generated click sound for maximum reliability
-  private async playGeneratedClickSound(): Promise<void> {
-    try {
-      if (!this.audioContext || !this.isEnabled) {
-        return;
-      }
-
-      if (this.audioContext.state === 'suspended') {
-        await this.audioContext.resume();
-      }
-
-      // Create professional-grade click sound
-      const oscillator = this.audioContext.createOscillator();
-      const gainNode = this.audioContext.createGain();
-      const filterNode = this.audioContext.createBiquadFilter();
-      
-      // Professional click characteristics
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(1200, this.audioContext.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(400, this.audioContext.currentTime + 0.075);
-      
-      // Low-pass filter to remove harsh frequencies
-      filterNode.type = 'lowpass';
-      filterNode.frequency.setValueAtTime(8000, this.audioContext.currentTime);
-      filterNode.Q.setValueAtTime(0.5, this.audioContext.currentTime);
-      
-      // Volume envelope
-      gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.178, this.audioContext.currentTime + 0.005);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.075);
-      
-      // Connect signal chain
-      oscillator.connect(filterNode);
-      filterNode.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
-      
-      // Play for 75ms
-      oscillator.start(this.audioContext.currentTime);
-      oscillator.stop(this.audioContext.currentTime + 0.075);
-      
-      console.log('🔊 Playing fallback generated click sound');
-      
-    } catch (error) {
-      console.error('🔊 Error playing generated click sound:', error);
-    }
-  }
-
-  // Legacy methods for compatibility
-  async loadSounds() {
-    if (!this.isInitialized) {
-      await this.initializeAudio();
-    }
-    await this.loadClickSound();
-    console.log('🔊 Sound manager ready - all sounds loaded');
-  }
-
-  async playLoadingSound() {
-    if (!this.isInitialized) {
-      await this.initializeAudio();
-    }
-    console.log('🔊 Playing loading sound...');
-    await this.playTone(600, 0.3, 0.06);
-  }
-
-  async playSuccessSound() {
-    if (!this.isInitialized) {
-      await this.initializeAudio();
-    }
-    console.log('🔊 Playing success sound...');
-    await this.playTone(1000, 0.5, 0.12);
-  }
-
-  async playErrorSound() {
-    if (!this.isInitialized) {
-      await this.initializeAudio();
-    }
-    console.log('🔊 Playing error sound...');
-    await this.playTone(400, 0.8, 0.15);
-  }
-
-  // Play a tone with specified frequency, duration, and volume
-  private async playTone(frequency: number, duration: number, volume: number = 0.1): Promise<void> {
-    try {
-      if (!this.audioContext || !this.isEnabled) {
-        return;
-      }
-
-      if (this.audioContext.state === 'suspended') {
-        await this.audioContext.resume();
-      }
-
-      const oscillator = this.audioContext.createOscillator();
-      const gainNode = this.audioContext.createGain();
-      
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
-      
-      gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-      gainNode.gain.linearRampToValueAtTime(volume, this.audioContext.currentTime + 0.01);
-      gainNode.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + duration - 0.01);
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
-      
-      oscillator.start(this.audioContext.currentTime);
-      oscillator.stop(this.audioContext.currentTime + duration);
-      
-    } catch (error) {
-      console.error('🔊 Error playing tone:', error);
-    }
-  }
-
-  setEnabled(enabled: boolean) {
-    this.isEnabled = enabled;
-    console.log(`🔊 Audio ${enabled ? 'enabled' : 'disabled'}`);
-  }
-
-  async cleanup() {
-    try {
-      this.clickSoundBuffer = null;
-      if (this.audioContext) {
-        await this.audioContext.close();
-        this.audioContext = null;
-      }
-      this.isInitialized = false;
-      this.preloadAttempted = false;
-      console.log('🔊 Audio cleanup completed');
-    } catch (error) {
-      console.error('🔊 Error during audio cleanup:', error);
-    }
-  }
+            {/* Tool Status */}
+            <View style={styles.statusCard}>
+              <View style={styles.statusIndicator}>
+                <View style={[
+                  styles.statusDot,
+                  { backgroundColor: product.status === 'online' ? '#10b981' : '#ef4444' }
+                ]} />
+                <Text style={styles.statusText}>
+                  System Status: {product.status.charAt(0).toUpperCase() + product.status.slice(1)}
+                </Text>
+              </View>
+              <Text style={styles.statusDescription}>
+                {product.wisdomBlocks.length} knowledge articles available
+              </Text>
+            </View>
+          </View>
+        </Animated.View>
+      )}
+    </View>
+  );
 }
 
-export default SoundManager;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0f172a',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    backgroundColor: '#1e293b',
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
+  },
+  backButton: {
+    marginRight: 16,
+    padding: 8,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  loadingContent: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  spinner: {
+    marginBottom: 40,
+  },
+  spinnerOuter: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 4,
+    borderColor: '#334155',
+    borderTopColor: '#3b82f6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  spinnerInner: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#3b82f6',
+    opacity: 0.3,
+  },
+  progressContainer: {
+    width: '100%',
+    marginBottom: 32,
+  },
+  progressTrack: {
+    height: 6,
+    backgroundColor: '#334155',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#3b82f6',
+    borderRadius: 3,
+  },
+  loadingMessage: {
+    fontSize: 18,
+    color: '#ffffff',
+    textAlign: 'center',
+    marginBottom: 24,
+    fontWeight: '500',
+  },
+  dotsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#3b82f6',
+  },
+  successContainer: {
+    alignItems: 'center',
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  successMessage: {
+    fontSize: 16,
+    color: '#10b981',
+    textAlign: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  errorIcon: {
+    marginBottom: 24,
+  },
+  errorTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  errorDescription: {
+    fontSize: 16,
+    color: '#cbd5e1',
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 24,
+  },
+  retryButton: {
+    backgroundColor: '#3b82f6',
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 12,
+  },
+  retryButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#ffffff',
+    textAlign: 'center',
+  },
+  welcomeContainer: {
+    flex: 1,
+    padding: 20,
+  },
+  welcomeContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  welcomeIcon: {
+    marginBottom: 24,
+  },
+  welcomeTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  welcomeDescription: {
+    fontSize: 16,
+    color: '#cbd5e1',
+    textAlign: 'center',
+    marginBottom: 40,
+    lineHeight: 24,
+    paddingHorizontal: 20,
+  },
+  articlesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#3b82f6',
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginBottom: 40,
+  },
+  articlesButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginRight: 8,
+  },
+  buttonIcon: {
+    marginLeft: 4,
+  },
+  statusCard: {
+    backgroundColor: '#1e293b',
+    borderRadius: 12,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#334155',
+    width: '100%',
+    maxWidth: 400,
+  },
+  statusIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  statusText: {
+    fontSize: 14,
+    color: '#ffffff',
+    fontWeight: '500',
+  },
+  statusDescription: {
+    fontSize: 14,
+    color: '#64748b',
+  },
+  errorText: {
+    fontSize: 18,
+    color: '#ef4444',
+    textAlign: 'center',
+    marginTop: 50,
+  },
+});
