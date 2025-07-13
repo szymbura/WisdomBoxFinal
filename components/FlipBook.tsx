@@ -91,18 +91,18 @@ This powerful tool empowers broadcast teams to create compelling content with co
 ];
 
 export function FlipBook({ pages, onClose }: FlipBookProps) {
-  const [currentPage, setCurrentPage] = useState(0);
+  const [currentSpread, setCurrentSpread] = useState(0); // Which spread (pair of pages) we're viewing
   const [isFlipping, setIsFlipping] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [flipDirection, setFlipDirection] = useState<'next' | 'prev'>('next');
   
   const soundManager = SoundManager.getInstance();
   
-  // Animation values for Turn.js style page turning
+  // Animation values for realistic page turning
   const flipProgress = useRef(new Animated.Value(0)).current;
   const pageElevation = useRef(new Animated.Value(0)).current;
   const shadowIntensity = useRef(new Animated.Value(0)).current;
   const spineGlow = useRef(new Animated.Value(0)).current;
+  const pageCurl = useRef(new Animated.Value(0)).current;
 
   // Use IPDirector pages
   const bookPages = IPDIRECTOR_PAGES.map((page, index) => ({
@@ -112,14 +112,26 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
     totalPages: IPDIRECTOR_PAGES.length
   }));
 
+  // Calculate current pages for the spread
+  const leftPageIndex = currentSpread * 2;
+  const rightPageIndex = currentSpread * 2 + 1;
+  
+  const leftPage = leftPageIndex < bookPages.length ? bookPages[leftPageIndex] : null;
+  const rightPage = rightPageIndex < bookPages.length ? bookPages[rightPageIndex] : null;
+  
+  // Next pages (what will be revealed when turning)
+  const nextLeftPage = rightPage; // Current right becomes next left
+  const nextRightPage = rightPageIndex + 1 < bookPages.length ? bookPages[rightPageIndex + 1] : null;
+
   const handlePageTurn = (direction: 'next' | 'prev') => {
     if (isFlipping) return;
     
-    const canTurn = direction === 'next' ? currentPage < bookPages.length - 1 : currentPage > 0;
-    if (!canTurn) return;
+    const canTurnNext = direction === 'next' && rightPageIndex < bookPages.length - 1;
+    const canTurnPrev = direction === 'prev' && currentSpread > 0;
+    
+    if (!canTurnNext && !canTurnPrev) return;
     
     setIsFlipping(true);
-    setFlipDirection(direction);
     
     // Play sound
     if (soundEnabled) {
@@ -131,13 +143,14 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
     pageElevation.setValue(0);
     shadowIntensity.setValue(0);
     spineGlow.setValue(0);
+    pageCurl.setValue(0);
     
-    // Turn.js style page turning animation
+    // Realistic page turning animation - only right page flips
     Animated.parallel([
       // Main flip progress (0 to 1)
       Animated.timing(flipProgress, {
         toValue: 1,
-        duration: 1000,
+        duration: 1200,
         useNativeDriver: false,
       }),
       
@@ -145,12 +158,12 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
       Animated.sequence([
         Animated.timing(pageElevation, {
           toValue: 1,
-          duration: 500,
+          duration: 600,
           useNativeDriver: true,
         }),
         Animated.timing(pageElevation, {
           toValue: 0,
-          duration: 500,
+          duration: 600,
           useNativeDriver: true,
         }),
       ]),
@@ -159,12 +172,12 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
       Animated.sequence([
         Animated.timing(shadowIntensity, {
           toValue: 1,
-          duration: 500,
+          duration: 600,
           useNativeDriver: false,
         }),
         Animated.timing(shadowIntensity, {
           toValue: 0,
-          duration: 500,
+          duration: 600,
           useNativeDriver: false,
         }),
       ]),
@@ -173,19 +186,33 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
       Animated.sequence([
         Animated.timing(spineGlow, {
           toValue: 1,
-          duration: 500,
+          duration: 600,
           useNativeDriver: false,
         }),
         Animated.timing(spineGlow, {
           toValue: 0,
-          duration: 500,
+          duration: 600,
+          useNativeDriver: false,
+        }),
+      ]),
+      
+      // Page curl effect
+      Animated.sequence([
+        Animated.timing(pageCurl, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: false,
+        }),
+        Animated.timing(pageCurl, {
+          toValue: 0,
+          duration: 600,
           useNativeDriver: false,
         }),
       ]),
     ]).start(() => {
-      // Update page after animation
-      const newPage = direction === 'next' ? currentPage + 1 : currentPage - 1;
-      setCurrentPage(newPage);
+      // Update spread after animation
+      const newSpread = direction === 'next' ? currentSpread + 1 : currentSpread - 1;
+      setCurrentSpread(newSpread);
       setIsFlipping(false);
     });
   };
@@ -212,50 +239,45 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
     });
   };
 
-  // Get current page data
-  const leftPageData = currentPage > 0 ? bookPages[currentPage - 1] : null;
-  const rightPageData = currentPage < bookPages.length ? bookPages[currentPage] : null;
-
-  // Turn.js style animation interpolations
-  const flipRotateY = flipProgress.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: flipDirection === 'next' ? ['0deg', '-90deg', '-180deg'] : ['0deg', '90deg', '180deg'],
+  // Animation interpolations for realistic page turning
+  const rightPageRotateY = flipProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '-180deg'], // Right page flips left
   });
 
-  const flipScaleX = flipProgress.interpolate({
+  const rightPageScaleX = pageCurl.interpolate({
     inputRange: [0, 0.5, 1],
-    outputRange: [1, 0.8, 1],
+    outputRange: [1, 0.85, 1], // Page curls inward
   });
 
-  const flipTranslateX = flipProgress.interpolate({
+  const rightPageTranslateX = flipProgress.interpolate({
     inputRange: [0, 0.5, 1],
-    outputRange: [0, flipDirection === 'next' ? -20 : 20, 0],
+    outputRange: [0, -15, 0], // Slight movement during flip
   });
 
   const elevationZ = pageElevation.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 20],
+    outputRange: [0, 25],
   });
 
   const shadowOpacity = shadowIntensity.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.1, 0.8],
+    outputRange: [0.1, 0.7],
   });
 
   const shadowRadius = shadowIntensity.interpolate({
     inputRange: [0, 1],
-    outputRange: [5, 30],
+    outputRange: [5, 25],
   });
 
   const spineGlowOpacity = spineGlow.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.3, 1],
+    outputRange: [0.3, 0.9],
   });
 
-  // Page curl effect
-  const pageCurlGradient = flipProgress.interpolate({
+  const pageGradientOpacity = flipProgress.interpolate({
     inputRange: [0, 0.3, 0.7, 1],
-    outputRange: [0, 0.3, 0.7, 0],
+    outputRange: [0, 0.4, 0.6, 0],
   });
 
   return (
@@ -292,7 +314,7 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
               shadowOpacity: spineGlowOpacity,
               shadowRadius: spineGlow.interpolate({
                 inputRange: [0, 1],
-                outputRange: [4, 16],
+                outputRange: [4, 20],
               }),
             }
           ]}>
@@ -302,17 +324,17 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
           {/* Pages Container */}
           <View style={styles.pagesContainer}>
             
-            {/* Left Page - Static */}
-            <View style={styles.leftPageStatic}>
-              {leftPageData ? (
+            {/* Left Page - Always Static */}
+            <View style={styles.leftPageContainer}>
+              {leftPage ? (
                 <View style={styles.pageContent}>
                   <ScrollView style={styles.pageScroll} showsVerticalScrollIndicator={false}>
                     <View style={styles.contentPadding}>
-                      <Text style={styles.pageTitle}>{leftPageData.title}</Text>
+                      <Text style={styles.pageTitle}>{leftPage.title}</Text>
                       <View style={styles.contentArea}>
-                        {formatContent(leftPageData.content)}
+                        {formatContent(leftPage.content)}
                       </View>
-                      <Text style={styles.pageNumber}>{leftPageData.pageNumber}</Text>
+                      <Text style={styles.pageNumber}>{leftPage.pageNumber}</Text>
                     </View>
                   </ScrollView>
                 </View>
@@ -333,17 +355,17 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
               )}
             </View>
 
-            {/* Right Page - Static */}
-            <View style={styles.rightPageStatic}>
-              {rightPageData ? (
+            {/* Right Page - Static when not flipping */}
+            <View style={[styles.rightPageContainer, isFlipping && styles.hiddenDuringFlip]}>
+              {rightPage ? (
                 <View style={styles.pageContent}>
                   <ScrollView style={styles.pageScroll} showsVerticalScrollIndicator={false}>
                     <View style={styles.contentPadding}>
-                      <Text style={styles.pageTitle}>{rightPageData.title}</Text>
+                      <Text style={styles.pageTitle}>{rightPage.title}</Text>
                       <View style={styles.contentArea}>
-                        {formatContent(rightPageData.content)}
+                        {formatContent(rightPage.content)}
                       </View>
-                      <Text style={styles.pageNumber}>{rightPageData.pageNumber}</Text>
+                      <Text style={styles.pageNumber}>{rightPage.pageNumber}</Text>
                     </View>
                   </ScrollView>
                 </View>
@@ -360,25 +382,21 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
               )}
             </View>
 
-            {/* Animated Flipping Page Overlay */}
-            {isFlipping && (
+            {/* Animated Right Page - Only visible during flip */}
+            {isFlipping && rightPage && (
               <Animated.View style={[
-                styles.flippingPageOverlay,
-                flipDirection === 'next' ? styles.flippingRightPage : styles.flippingLeftPage,
+                styles.flippingRightPage,
                 {
                   transform: [
                     { perspective: 1200 },
-                    { translateX: flipTranslateX },
-                    { rotateY: flipRotateY },
-                    { scaleX: flipScaleX },
+                    { translateX: rightPageTranslateX },
+                    { rotateY: rightPageRotateY },
+                    { scaleX: rightPageScaleX },
                     { translateZ: elevationZ },
                   ],
                   shadowOpacity: shadowOpacity,
                   shadowRadius: shadowRadius,
-                  shadowOffset: { 
-                    width: flipDirection === 'next' ? 10 : -10, 
-                    height: 15 
-                  },
+                  shadowOffset: { width: -10, height: 15 },
                   shadowColor: '#000000',
                   zIndex: 10,
                 }
@@ -387,10 +405,7 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
                 <Animated.View style={[
                   styles.pageCurlOverlay,
                   {
-                    opacity: pageCurlGradient,
-                    background: flipDirection === 'next' 
-                      ? 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.3) 100%)'
-                      : 'linear-gradient(to left, transparent 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.3) 100%)'
+                    opacity: pageGradientOpacity,
                   }
                 ]} />
                 
@@ -398,28 +413,64 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
                 <View style={styles.pageContent}>
                   <ScrollView style={styles.pageScroll} showsVerticalScrollIndicator={false}>
                     <View style={styles.contentPadding}>
-                      {flipDirection === 'next' && rightPageData && (
-                        <>
-                          <Text style={styles.pageTitle}>{rightPageData.title}</Text>
-                          <View style={styles.contentArea}>
-                            {formatContent(rightPageData.content)}
-                          </View>
-                          <Text style={styles.pageNumber}>{rightPageData.pageNumber}</Text>
-                        </>
-                      )}
-                      {flipDirection === 'prev' && leftPageData && (
-                        <>
-                          <Text style={styles.pageTitle}>{leftPageData.title}</Text>
-                          <View style={styles.contentArea}>
-                            {formatContent(leftPageData.content)}
-                          </View>
-                          <Text style={styles.pageNumber}>{leftPageData.pageNumber}</Text>
-                        </>
-                      )}
+                      <Text style={styles.pageTitle}>{rightPage.title}</Text>
+                      <View style={styles.contentArea}>
+                        {formatContent(rightPage.content)}
+                      </View>
+                      <Text style={styles.pageNumber}>{rightPage.pageNumber}</Text>
                     </View>
                   </ScrollView>
                 </View>
               </Animated.View>
+            )}
+
+            {/* Next Pages Preview - Visible during flip */}
+            {isFlipping && (
+              <View style={styles.nextPagesContainer}>
+                {/* Next Left Page */}
+                <View style={styles.nextLeftPage}>
+                  {nextLeftPage && (
+                    <View style={styles.pageContent}>
+                      <ScrollView style={styles.pageScroll} showsVerticalScrollIndicator={false}>
+                        <View style={styles.contentPadding}>
+                          <Text style={styles.pageTitle}>{nextLeftPage.title}</Text>
+                          <View style={styles.contentArea}>
+                            {formatContent(nextLeftPage.content)}
+                          </View>
+                          <Text style={styles.pageNumber}>{nextLeftPage.pageNumber}</Text>
+                        </View>
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+                
+                {/* Next Right Page */}
+                <View style={styles.nextRightPage}>
+                  {nextRightPage ? (
+                    <View style={styles.pageContent}>
+                      <ScrollView style={styles.pageScroll} showsVerticalScrollIndicator={false}>
+                        <View style={styles.contentPadding}>
+                          <Text style={styles.pageTitle}>{nextRightPage.title}</Text>
+                          <View style={styles.contentArea}>
+                            {formatContent(nextRightPage.content)}
+                          </View>
+                          <Text style={styles.pageNumber}>{nextRightPage.pageNumber}</Text>
+                        </View>
+                      </ScrollView>
+                    </View>
+                  ) : (
+                    <View style={styles.endPage}>
+                      <View style={styles.endContent}>
+                        <BookOpen size={60} color="#3b82f6" />
+                        <Text style={styles.endTitle}>End of Guide</Text>
+                        <Text style={styles.endDescription}>
+                          You've completed the IPDirector guide.
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              </View>
             )}
 
             {/* Binding Shadow */}
@@ -428,7 +479,7 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
               {
                 opacity: shadowIntensity.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [0.2, 0.9],
+                  outputRange: [0.2, 0.8],
                 }),
               }
             ]} />
@@ -440,51 +491,51 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
       <View style={styles.controlsContainer}>
         <View style={styles.controls}>
           <TouchableOpacity
-            style={[styles.navButton, currentPage === 0 && styles.navButtonDisabled]}
+            style={[styles.navButton, currentSpread === 0 && styles.navButtonDisabled]}
             onPress={() => handlePageTurn('prev')}
-            disabled={currentPage === 0 || isFlipping}
+            disabled={currentSpread === 0 || isFlipping}
           >
-            <ChevronLeft size={24} color={currentPage === 0 ? "#64748b" : "#ffffff"} />
-            <Text style={[styles.navButtonText, currentPage === 0 && styles.navButtonTextDisabled]}>
+            <ChevronLeft size={24} color={currentSpread === 0 ? "#64748b" : "#ffffff"} />
+            <Text style={[styles.navButtonText, currentSpread === 0 && styles.navButtonTextDisabled]}>
               Previous
             </Text>
           </TouchableOpacity>
 
           <View style={styles.centerInfo}>
             <Text style={styles.currentModule}>
-              Page {currentPage + 1} of {bookPages.length}
+              Spread {currentSpread + 1} of {Math.ceil(bookPages.length / 2)}
             </Text>
             <Text style={styles.moduleTitle}>
-              {rightPageData?.title.length > 30 
-                ? rightPageData.title.substring(0, 30) + '...' 
-                : rightPageData?.title || 'End'}
+              {rightPage?.title.length > 30 
+                ? rightPage.title.substring(0, 30) + '...' 
+                : rightPage?.title || 'End'}
             </Text>
           </View>
 
           <TouchableOpacity
-            style={[styles.navButton, currentPage === bookPages.length - 1 && styles.navButtonDisabled]}
+            style={[styles.navButton, rightPageIndex >= bookPages.length - 1 && styles.navButtonDisabled]}
             onPress={() => handlePageTurn('next')}
-            disabled={currentPage === bookPages.length - 1 || isFlipping}
+            disabled={rightPageIndex >= bookPages.length - 1 || isFlipping}
           >
-            <Text style={[styles.navButtonText, currentPage === bookPages.length - 1 && styles.navButtonTextDisabled]}>
+            <Text style={[styles.navButtonText, rightPageIndex >= bookPages.length - 1 && styles.navButtonTextDisabled]}>
               Next
             </Text>
-            <ChevronRight size={24} color={currentPage === bookPages.length - 1 ? "#64748b" : "#ffffff"} />
+            <ChevronRight size={24} color={rightPageIndex >= bookPages.length - 1 ? "#64748b" : "#ffffff"} />
           </TouchableOpacity>
         </View>
 
-        {/* Page Indicators */}
+        {/* Spread Indicators */}
         <View style={styles.pageIndicators}>
-          {bookPages.map((_, index) => (
+          {Array.from({ length: Math.ceil(bookPages.length / 2) }, (_, index) => (
             <TouchableOpacity
               key={index}
               style={[
                 styles.pageIndicator,
-                index === currentPage && styles.pageIndicatorActive
+                index === currentSpread && styles.pageIndicatorActive
               ]}
               onPress={() => {
-                if (!isFlipping && index !== currentPage) {
-                  setCurrentPage(index);
+                if (!isFlipping && index !== currentSpread) {
+                  setCurrentSpread(index);
                   if (soundEnabled) {
                     soundManager.playClickSound();
                   }
@@ -493,7 +544,7 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
             >
               <Text style={[
                 styles.indicatorText,
-                index === currentPage && styles.indicatorTextActive
+                index === currentSpread && styles.indicatorTextActive
               ]}>
                 {index + 1}
               </Text>
@@ -597,7 +648,7 @@ const styles = StyleSheet.create({
     overflow: 'visible',
     position: 'relative',
   },
-  leftPageStatic: {
+  leftPageContainer: {
     width: PAGE_WIDTH - 8,
     height: '100%',
     backgroundColor: '#fefefe',
@@ -610,8 +661,9 @@ const styles = StyleSheet.create({
     elevation: 3,
     borderRightWidth: 1,
     borderRightColor: '#e5e5e5',
+    zIndex: 1,
   },
-  rightPageStatic: {
+  rightPageContainer: {
     width: PAGE_WIDTH - 8,
     height: '100%',
     backgroundColor: '#fefefe',
@@ -624,28 +676,50 @@ const styles = StyleSheet.create({
     elevation: 3,
     borderLeftWidth: 1,
     borderLeftColor: '#e5e5e5',
+    zIndex: 1,
   },
-  flippingPageOverlay: {
-    position: 'absolute',
-    top: 0,
-    height: '100%',
-    backgroundColor: '#fefefe',
-    shadowColor: '#000000',
-    elevation: 10,
+  hiddenDuringFlip: {
+    opacity: 0,
   },
   flippingRightPage: {
+    position: 'absolute',
     right: 0,
+    top: 0,
     width: PAGE_WIDTH - 8,
+    height: '100%',
+    backgroundColor: '#fefefe',
     borderTopRightRadius: 12,
     borderBottomRightRadius: 12,
+    shadowColor: '#000000',
+    elevation: 15,
     transformOrigin: 'left center',
   },
-  flippingLeftPage: {
+  nextPagesContainer: {
+    position: 'absolute',
+    top: 0,
     left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    zIndex: 0,
+  },
+  nextLeftPage: {
     width: PAGE_WIDTH - 8,
+    height: '100%',
+    backgroundColor: '#fefefe',
     borderTopLeftRadius: 12,
     borderBottomLeftRadius: 12,
-    transformOrigin: 'right center',
+    borderRightWidth: 1,
+    borderRightColor: '#e5e5e5',
+  },
+  nextRightPage: {
+    width: PAGE_WIDTH - 8,
+    height: '100%',
+    backgroundColor: '#fefefe',
+    borderTopRightRadius: 12,
+    borderBottomRightRadius: 12,
+    borderLeftWidth: 1,
+    borderLeftColor: '#e5e5e5',
   },
   pageCurlOverlay: {
     position: 'absolute',
@@ -653,6 +727,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.1)',
     borderRadius: 12,
     zIndex: 1,
   },
