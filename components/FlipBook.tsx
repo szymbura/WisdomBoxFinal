@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Animated } from 'react-native';
 import { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, BookOpen, Chrome as Home, Volume2, VolumeX } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, BookOpen, Home, Volume2, VolumeX } from 'lucide-react-native';
 import { router } from 'expo-router';
 import SoundManager from '@/utils/soundManager';
 
@@ -22,6 +22,78 @@ const BOOK_WIDTH = Math.min(screenWidth * 0.9, 800);
 const BOOK_HEIGHT = Math.min(screenHeight * 0.75, 600);
 const PAGE_WIDTH = BOOK_WIDTH / 2;
 
+// IPDirector article content split into logical pages
+const IPDIRECTOR_PAGES = [
+  {
+    title: "IPDirector: The Ultimate Creative Hub",
+    content: `IPDirector, a cornerstone of the EVS suite, is a powerhouse tool that redefines efficiency, creativity, and control in broadcast operations. By seamlessly blending robust hardware with intuitive Windows-based software, it delivers a familiar and streamlined media management experience, even for those new to EVS systems.
+
+Whether you're crafting highlight reels, managing live replays, or orchestrating complex playlists, IPDirector empowers your team to focus on storytelling, not technicalities.`
+  },
+  {
+    title: "Intuitive Windows-Based Interface",
+    content: `Unlike traditional replay or server control panels reliant on rigid "pages" and "banks," IPDirector introduces a modern, visual, and user-friendly interface designed for speed and simplicity.
+
+Key features include:
+
+• Visual Clip Management: Thumbnails and metadata for every clip enable quick identification, previewing, and organization.
+
+• Powerful Search Tools: A robust search bar instantly locates clips across all connected EVS servers, with advanced filtering for precision.
+
+• Multi-Window Workflow: Work seamlessly across multiple bins, playlists, and tasks in a flexible, multi-window environment.
+
+This intuitive design ensures operators can navigate with ease, boosting productivity in high-pressure broadcast settings.`
+  },
+  {
+    title: "Streamlined Content Control",
+    content: `IPDirector transforms media workflows by offering unparalleled flexibility in content management:
+
+• Effortless File Operations: Ingest, export, and import files using familiar Windows-like logic, with drag-and-drop functionality between directories and servers.
+
+• Networked Access: Instantly access and manage clips across any connected EVS server, ensuring real-time collaboration.
+
+• Live Editing & Replays: Edit clips, create slow-motion sequences, and manage assets on the fly, keeping your production dynamic and responsive.
+
+By centralizing these functions, IPDirector frees creative teams to prioritize storytelling over file management.`
+  },
+  {
+    title: "Advanced Timeline Editing with IP Edit",
+    content: `At the heart of IPDirector's creative power is IP Edit, a robust timeline editing tool that rivals top-tier non-linear editors while staying fully integrated with the EVS ecosystem.
+
+Key capabilities include:
+
+• Visual Timeline: Arrange, trim, and combine clips directly on an intuitive timeline, designed for live production speed.
+
+• Instant Previews: See edit results in real time, enabling fast decision-making in high-stakes environments.
+
+• Drag-and-Drop Highlights: Build and refine highlight packages or full playlists with minimal effort, streamlining production workflows.`
+  },
+  {
+    title: "Sophisticated Playlist Management",
+    content: `IPDirector and IP Edit elevate playlist creation with advanced features tailored for complex productions:
+
+• Dynamic Playlist Functions: Go beyond basic sequencing with tools for show rundowns, dynamic edits, and flexible playlist assembly.
+
+• Virtual Elements: Incorporate placeholders, virtual clips, or dynamic elements into playlists for adaptable live production.
+
+• Color Coding: Assign colors to clips and playlist segments to quickly identify key moments, transitions, or ad breaks.
+
+• Breaks and Pauses: Insert breaks to control broadcast flow, ensuring seamless pacing.`
+  },
+  {
+    title: "Advanced Playlist Features",
+    content: `• Timed Playback: Schedule clips or playlists to start automatically, ideal for automated rundowns or precise playout.
+
+• Comprehensive Editing: Use the timeline to edit individual clips or entire playlists, supporting advanced workflows like segmenting, merging, or refining highlight reels.`
+  },
+  {
+    title: "The Heart of Live Production",
+    content: `With its blend of reliable hardware and innovative software, IPDirector serves as a creative hub within the EVS server network. Whether managing hundreds of clips, assembling highlight reels on the fly, or scheduling intricate playlists, IPDirector and IP Edit deliver unmatched efficiency and intuition.
+
+This powerful tool empowers broadcast teams to create compelling content with confidence, making it an indispensable asset for live production.`
+  }
+];
+
 export function FlipBook({ pages, onClose }: FlipBookProps) {
   const [currentPage, setCurrentPage] = useState(0);
   const [isFlipping, setIsFlipping] = useState(false);
@@ -29,16 +101,26 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
   
   const soundManager = SoundManager.getInstance();
   
-  // Simple animation values
-  const fadeAnim = useRef(new Animated.Value(1)).current;
-  const slideAnim = useRef(new Animated.Value(0)).current;
+  // Animation values for realistic page flipping
+  const flipAnim = useRef(new Animated.Value(0)).current;
+  const shadowAnim = useRef(new Animated.Value(0)).current;
+  const curveAnim = useRef(new Animated.Value(0)).current;
+  const nextPageAnim = useRef(new Animated.Value(0)).current;
 
-  console.log('FlipBook - Component loaded with pages:', pages.length);
+  // Use IPDirector pages instead of passed pages
+  const bookPages = IPDIRECTOR_PAGES.map((page, index) => ({
+    ...page,
+    moduleIndex: index,
+    pageNumber: index + 1,
+    totalPages: IPDIRECTOR_PAGES.length
+  }));
 
   const handlePageTurn = (direction: 'next' | 'prev') => {
     if (isFlipping) return;
     
-    console.log('FlipBook - Page turn:', direction, 'current page:', currentPage);
+    const canTurn = direction === 'next' ? currentPage < bookPages.length - 1 : currentPage > 0;
+    if (!canTurn) return;
+    
     setIsFlipping(true);
     
     // Play sound
@@ -46,31 +128,67 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
       soundManager.playClickSound();
     }
     
-    // Simple slide animation
-    Animated.sequence([
-      Animated.timing(slideAnim, {
-        toValue: direction === 'next' ? -50 : 50,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 0.7,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 150,
-        useNativeDriver: true,
-      }),
+    // Realistic page flip animation sequence
+    Animated.parallel([
+      // Main page flip with 3D rotation effect
+      Animated.sequence([
+        Animated.timing(flipAnim, {
+          toValue: direction === 'next' ? 1 : -1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(flipAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]),
+      
+      // Shadow animation
+      Animated.sequence([
+        Animated.timing(shadowAnim, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: false,
+        }),
+        Animated.timing(shadowAnim, {
+          toValue: 0,
+          duration: 350,
+          useNativeDriver: false,
+        }),
+      ]),
+      
+      // Page curve effect
+      Animated.sequence([
+        Animated.timing(curveAnim, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.timing(curveAnim, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]),
+      
+      // Next page reveal
+      Animated.sequence([
+        Animated.delay(150),
+        Animated.timing(nextPageAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(nextPageAnim, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+      ]),
     ]).start(() => {
-      // Update page
-      if (direction === 'next' && currentPage < pages.length - 1) {
+      // Update page after animation
+      if (direction === 'next' && currentPage < bookPages.length - 1) {
         setCurrentPage(currentPage + 1);
       } else if (direction === 'prev' && currentPage > 0) {
         setCurrentPage(currentPage - 1);
@@ -80,20 +198,16 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
   };
 
   const formatContent = (content: string) => {
-    if (!content) {
-      return [<Text key="empty" style={styles.paragraphText}>No content available</Text>];
-    }
-    
     const lines = content.split('\n');
     return lines.map((line, index) => {
       if (line.trim() === '') {
         return <View key={index} style={styles.spacer} />;
-      } else if (line.trim().endsWith(':') && !line.includes('.')) {
-        // Section headers
+      } else if (line.trim().startsWith('•')) {
         return (
-          <Text key={index} style={styles.sectionHeader}>
-            {line.trim()}
-          </Text>
+          <View key={index} style={styles.bulletPoint}>
+            <Text style={styles.bullet}>•</Text>
+            <Text style={styles.bulletText}>{line.trim().substring(1).trim()}</Text>
+          </View>
         );
       } else {
         return (
@@ -105,10 +219,9 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
     });
   };
 
-  const currentPageData = pages[currentPage];
+  const currentPageData = bookPages[currentPage];
   
   if (!currentPageData) {
-    console.log('FlipBook - No current page data available');
     return (
       <View style={styles.container}>
         <View style={styles.errorContainer}>
@@ -117,6 +230,27 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
       </View>
     );
   }
+
+  // Animation interpolations for realistic effects
+  const flipRotation = flipAnim.interpolate({
+    inputRange: [-1, 0, 1],
+    outputRange: ['-180deg', '0deg', '180deg'],
+  });
+
+  const shadowOpacity = shadowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.1, 0.4],
+  });
+
+  const curveScale = curveAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0.98],
+  });
+
+  const nextPageScale = nextPageAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.95, 1],
+  });
 
   return (
     <View style={styles.container}>
@@ -141,20 +275,26 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
         </TouchableOpacity>
       </View>
 
-      {/* Simple Book Container */}
+      {/* Realistic Book Container */}
       <View style={styles.bookWrapper}>
-        <View style={styles.bookContainer}>
+        <Animated.View style={[
+          styles.bookContainer,
+          {
+            shadowOpacity: shadowOpacity,
+            transform: [{ scale: curveScale }]
+          }
+        ]}>
           
-          {/* Left Page */}
+          {/* Left Page (Previous) */}
           <View style={styles.leftPage}>
             {currentPage > 0 ? (
               <ScrollView style={styles.pageScroll} showsVerticalScrollIndicator={false}>
                 <View style={styles.pageContent}>
                   <Text style={styles.pageTitle}>
-                    {pages[currentPage - 1]?.title}
+                    {bookPages[currentPage - 1]?.title}
                   </Text>
                   <View style={styles.contentArea}>
-                    {formatContent(pages[currentPage - 1]?.content || '')}
+                    {formatContent(bookPages[currentPage - 1]?.content || '')}
                   </View>
                   <Text style={styles.pageNumber}>{currentPage}</Text>
                 </View>
@@ -176,13 +316,16 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
             )}
           </View>
 
-          {/* Right Page with Simple Animation */}
+          {/* Right Page with Realistic Flip Animation */}
           <Animated.View 
             style={[
               styles.rightPage,
               {
-                opacity: fadeAnim,
-                transform: [{ translateX: slideAnim }]
+                transform: [
+                  { perspective: 1000 },
+                  { rotateY: flipRotation },
+                  { scale: nextPageScale }
+                ]
               }
             ]}
           >
@@ -196,7 +339,7 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
               </View>
             </ScrollView>
           </Animated.View>
-        </View>
+        </Animated.View>
       </View>
 
       {/* Navigation Controls */}
@@ -214,7 +357,7 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
 
         <View style={styles.centerInfo}>
           <Text style={styles.currentModule}>
-            Page {currentPage + 1} of {pages.length}
+            Page {currentPage + 1} of {bookPages.length}
           </Text>
           <Text style={styles.moduleTitle}>
             {currentPageData.title.length > 30 
@@ -224,21 +367,21 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
         </View>
 
         <TouchableOpacity
-          style={[styles.navButton, currentPage === pages.length - 1 && styles.navButtonDisabled]}
+          style={[styles.navButton, currentPage === bookPages.length - 1 && styles.navButtonDisabled]}
           onPress={() => handlePageTurn('next')}
-          disabled={currentPage === pages.length - 1 || isFlipping}
+          disabled={currentPage === bookPages.length - 1 || isFlipping}
         >
-          <Text style={[styles.navButtonText, currentPage === pages.length - 1 && styles.navButtonTextDisabled]}>
+          <Text style={[styles.navButtonText, currentPage === bookPages.length - 1 && styles.navButtonTextDisabled]}>
             Next
           </Text>
-          <ChevronRight size={24} color={currentPage === pages.length - 1 ? "#64748b" : "#ffffff"} />
+          <ChevronRight size={24} color={currentPage === bookPages.length - 1 ? "#64748b" : "#ffffff"} />
         </TouchableOpacity>
       </View>
 
       {/* Page Thumbnails */}
       <View style={styles.thumbnailStrip}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbnailScroll}>
-          {pages.map((page, index) => (
+          {bookPages.map((page, index) => (
             <TouchableOpacity
               key={index}
               style={[
@@ -321,7 +464,6 @@ const styles = StyleSheet.create({
     elevation: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
     shadowRadius: 15,
   },
   leftPage: {
@@ -397,20 +539,30 @@ const styles = StyleSheet.create({
     flex: 1,
     marginBottom: 20,
   },
-  sectionHeader: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#3b82f6',
-    marginTop: 16,
-    marginBottom: 8,
-    lineHeight: 22,
-  },
   paragraphText: {
     fontSize: 14,
     color: '#374151',
     lineHeight: 20,
     marginBottom: 12,
     textAlign: 'justify',
+  },
+  bulletPoint: {
+    flexDirection: 'row',
+    marginBottom: 8,
+    paddingLeft: 8,
+  },
+  bullet: {
+    fontSize: 14,
+    color: '#3b82f6',
+    marginRight: 8,
+    fontWeight: 'bold',
+    minWidth: 16,
+  },
+  bulletText: {
+    fontSize: 14,
+    color: '#374151',
+    lineHeight: 20,
+    flex: 1,
   },
   spacer: {
     height: 8,
