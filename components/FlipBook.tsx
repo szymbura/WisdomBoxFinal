@@ -416,7 +416,7 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
             </Text>
             <ChevronRight size={24} color={currentPage === bookPages.length - 1 ? "#64748b" : "#ffffff"} />
           </TouchableOpacity>
-        </div>
+        </View>
 
         {/* Page Indicators */}
         <View style={styles.pageIndicators}>
