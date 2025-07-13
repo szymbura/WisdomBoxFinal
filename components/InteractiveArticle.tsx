@@ -1,280 +1,119 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { useState, useRef } from 'react';
-import { Animated } from 'react-native';
-import { ChevronDown, ChevronRight, BookOpen } from 'lucide-react-native';
-import SoundManager from '@/utils/soundManager';
+class SoundManager {
+  private static instance: SoundManager;
+  private audioContext: AudioContext | null = null;
+  private isEnabled: boolean = true;
+  private isInitialized: boolean = false;
 
-interface InteractiveSection {
-  title: string;
-  text: string;
-}
+  private constructor() {}
 
-interface InteractiveArticleProps {
-  sections: InteractiveSection[];
-}
-
-export function InteractiveArticle({ sections }: InteractiveArticleProps) {
-  const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set([0])); // First section expanded by default
-  const soundManager = SoundManager.getInstance();
-  const animatedValues = useRef(
-    sections.map(() => new Animated.Value(0))
-  ).current;
-  const scaleValues = useRef(
-    sections.map(() => new Animated.Value(1))
-  ).current;
-
-  const toggleSection = (index: number) => {
-    // Initialize audio and play click sound
-    console.log('🔊 User clicked section, playing click sound...');
-    soundManager.playClickSound();
-    
-    // Scale animation for button press feedback
-    Animated.sequence([
-      Animated.timing(scaleValues[index], {
-        toValue: 0.95,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleValues[index], {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    const newExpanded = new Set(expandedSections);
-    const isCurrentlyExpanded = newExpanded.has(index);
-    
-    if (newExpanded.has(index)) {
-      // Collapse animation
-      Animated.timing(animatedValues[index], {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: false,
-      }).start();
-      newExpanded.delete(index);
-    } else {
-      // Expand animation
-      Animated.timing(animatedValues[index], {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: false,
-      }).start();
-      newExpanded.add(index);
+  static getInstance(): SoundManager {
+    if (!SoundManager.instance) {
+      SoundManager.instance = new SoundManager();
     }
-    setExpandedSections(newExpanded);
-  };
+    return SoundManager.instance;
+  }
 
-  const formatText = (text: string) => {
-    // Split text by bullet points and format them
-    const lines = text.split('\n');
-    return lines.map((line, index) => {
-      if (line.trim().startsWith('•')) {
-        return (
-          <View key={index} style={styles.bulletPoint}>
-            <Text style={styles.bullet}>•</Text>
-            <Text style={styles.bulletText}>{line.trim().substring(1).trim()}</Text>
-          </View>
-        );
-      } else if (line.trim()) {
-        return (
-          <Text key={index} style={styles.paragraphText}>
-            {line.trim()}
-          </Text>
-        );
+  // Initialize audio context with user interaction
+  async initializeAudio(): Promise<boolean> {
+    try {
+      console.log('🔊 Initializing audio context...');
+      
+      if (!this.audioContext) {
+        this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       }
-      return <View key={index} style={styles.spacer} />;
-    });
-  };
 
-  return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <View style={styles.header}>
-        <BookOpen size={24} color="#3b82f6" />
-        <Text style={styles.headerTitle}>Interactive Guide</Text>
-      </View>
+      // Resume if suspended (browser autoplay policy)
+      if (this.audioContext.state === 'suspended') {
+        console.log('🔊 Resuming suspended audio context...');
+        await this.audioContext.resume();
+      }
 
-      {sections.map((section, index) => {
-        const isExpanded = expandedSections.has(index);
-        const isFirst = index === 0;
-        
-        return (
-          <View key={index} style={[styles.section, isFirst && styles.firstSection]}>
-            <Animated.View style={{ transform: [{ scale: scaleValues[index] }] }}>
-              <TouchableOpacity
-                style={[styles.sectionHeader, isExpanded && styles.sectionHeaderExpanded]}
-                onPress={() => toggleSection(index)}
-                activeOpacity={0.8}
-              >
-                <View style={styles.sectionHeaderContent}>
-                  <Text style={[styles.sectionTitle, isFirst && styles.firstSectionTitle]}>
-                    {section.title}
-                  </Text>
-                  <Animated.View
-                    style={{
-                      transform: [{
-                        rotate: animatedValues[index].interpolate({
-                          inputRange: [0, 1],
-                          outputRange: ['0deg', '90deg'],
-                        })
-                      }]
-                    }}
-                  >
-                    <ChevronRight size={20} color={isExpanded ? "#3b82f6" : "#64748b"} />
-                  </Animated.View>
-                </View>
-              </TouchableOpacity>
-            </Animated.View>
+      this.isInitialized = true;
+      console.log('🔊 Audio context initialized successfully, state:', this.audioContext.state);
+      
+      return true;
+    } catch (error) {
+      console.error('🔊 Failed to initialize audio:', error);
+      return false;
+    }
+  }
 
-            <Animated.View
-              style={[
-                styles.sectionContent,
-                {
-                  maxHeight: animatedValues[index].interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, 1000], // Adjust based on content height
-                  }),
-                  opacity: animatedValues[index].interpolate({
-                    inputRange: [0, 0.5, 1],
-                    outputRange: [0, 0.5, 1],
-                  }),
-                }
-              ]}
-              pointerEvents={isExpanded ? 'auto' : 'none'}
-            >
-              {isExpanded && (
-                <Animated.View 
-                  style={[
-                    styles.contentContainer,
-                    {
-                      transform: [{
-                        translateY: animatedValues[index].interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [-20, 0],
-                        })
-                      }]
-                    }
-                  ]}
-                >
-                  {formatText(section.text)}
-                </Animated.View>
-              )}
-            </Animated.View>
-          </View>
-        );
-      })}
+  // Play the click sound with instant response
+  async playClickSound() {
+    // Click sounds have been disabled
+    console.log('🔊 Click sounds are disabled');
+  }
 
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          Tap any section to expand or collapse its content
-        </Text>
-      </View>
-    </ScrollView>
-  );
+  // Legacy methods for compatibility
+  async loadSounds() {
+    console.log('🔊 Sound manager ready - sounds will be loaded on demand');
+  }
+
+  async playLoadingSound() {
+    if (!this.isInitialized) {
+      await this.initializeAudio();
+    }
+    console.log('🔊 Playing loading sound...');
+    await this.playTone(600, 0.3, 0.06);
+  }
+
+  async playSuccessSound() {
+    if (!this.isInitialized) {
+      await this.initializeAudio();
+    }
+    console.log('🔊 Playing success sound...');
+    await this.playTone(1000, 0.5, 0.12);
+  }
+
+  // Play a tone with specified frequency, duration, and volume
+  private async playTone(frequency: number, duration: number, volume: number = 0.1): Promise<void> {
+    try {
+      if (!this.audioContext || !this.isEnabled) {
+        return;
+      }
+
+      if (this.audioContext.state === 'suspended') {
+        await this.audioContext.resume();
+      }
+
+      const oscillator = this.audioContext.createOscillator();
+      const gainNode = this.audioContext.createGain();
+      
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+      
+      gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+      gainNode.gain.linearRampToValueAtTime(volume, this.audioContext.currentTime + 0.01);
+      gainNode.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + duration - 0.01);
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(this.audioContext.destination);
+      
+      oscillator.start(this.audioContext.currentTime);
+      oscillator.stop(this.audioContext.currentTime + duration);
+      
+    } catch (error) {
+      console.error('🔊 Error playing tone:', error);
+    }
+  }
+
+  setEnabled(enabled: boolean) {
+    this.isEnabled = enabled;
+    console.log(`🔊 Audio ${enabled ? 'enabled' : 'disabled'}`);
+  }
+
+  async cleanup() {
+    try {
+      if (this.audioContext) {
+        await this.audioContext.close();
+        this.audioContext = null;
+      }
+      this.isInitialized = false;
+      console.log('🔊 Audio cleanup completed');
+    } catch (error) {
+      console.error('🔊 Error during audio cleanup:', error);
+    }
+  }
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#1e293b',
-    borderBottomWidth: 1,
-    borderBottomColor: '#334155',
-    marginBottom: 8,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#ffffff',
-    marginLeft: 12,
-  },
-  section: {
-    marginHorizontal: 16,
-    marginBottom: 8,
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#334155',
-    overflow: 'hidden',
-  },
-  firstSection: {
-    borderColor: '#3b82f6',
-    borderWidth: 2,
-  },
-  sectionHeader: {
-    padding: 16,
-    backgroundColor: '#1e293b',
-  },
-  sectionHeaderExpanded: {
-    backgroundColor: '#334155',
-    borderBottomWidth: 1,
-    borderBottomColor: '#475569',
-  },
-  sectionHeaderContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ffffff',
-    flex: 1,
-    marginRight: 12,
-    lineHeight: 22,
-  },
-  firstSectionTitle: {
-    fontSize: 18,
-    color: '#3b82f6',
-  },
-  sectionContent: {
-    backgroundColor: '#0f172a',
-    overflow: 'hidden',
-  },
-  contentContainer: {
-    padding: 20,
-    paddingTop: 16,
-  },
-  paragraphText: {
-    fontSize: 15,
-    color: '#cbd5e1',
-    lineHeight: 24,
-    marginBottom: 12,
-  },
-  bulletPoint: {
-    flexDirection: 'row',
-    marginBottom: 8,
-    paddingLeft: 8,
-  },
-  bullet: {
-    fontSize: 15,
-    color: '#3b82f6',
-    marginRight: 12,
-    fontWeight: 'bold',
-    minWidth: 16,
-  },
-  bulletText: {
-    fontSize: 15,
-    color: '#cbd5e1',
-    lineHeight: 22,
-    flex: 1,
-  },
-  spacer: {
-    height: 8,
-  },
-  footer: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  footerText: {
-    fontSize: 14,
-    color: '#64748b',
-    fontStyle: 'italic',
-    textAlign: 'center',
-  },
-});
+export default SoundManager;
