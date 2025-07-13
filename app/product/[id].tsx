@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft, BookOpen } from 'lucide-react-native';
 import { WisdomCard } from '@/components/WisdomCard';
 import { evsProducts } from '@/data/evsData';
 
@@ -35,6 +35,17 @@ export default function ProductScreen() {
       {/* Product Description */}
       <View style={styles.productInfo}>
         <Text style={styles.productDescription}>{product.description}</Text>
+        
+        {/* Flipbook Button - Only show for IPDirector */}
+        {product.id === 'ipdirector' && (
+          <TouchableOpacity 
+            style={styles.flipbookButton}
+            onPress={() => router.push(`/flipbook/${product.id}`)}
+          >
+            <BookOpen size={20} color="#ffffff" />
+            <Text style={styles.flipbookButtonText}>Open Digital Flipbook</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Wisdom Blocks */}
@@ -91,6 +102,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#cbd5e1',
     lineHeight: 24,
+  },
+  flipbookButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#3b82f6',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 16,
+    alignSelf: 'flex-start',
+  },
+  flipbookButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginLeft: 8,
   },
   scrollView: {
     flex: 1,

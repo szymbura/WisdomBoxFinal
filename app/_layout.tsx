@@ -23,6 +23,7 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="product/[id]" />
+        <Stack.Screen name="flipbook/[id]" />
         <Stack.Screen name="launch/[id]" />
         <Stack.Screen name="wisdom/[id]" />
         <Stack.Screen name="+not-found" />
