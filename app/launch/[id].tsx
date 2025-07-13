@@ -32,17 +32,6 @@ export default function LaunchScreen() {
   const progressAnim = useRef(new Animated.Value(0)).current;
   const successAnim = useRef(new Animated.Value(0)).current;
   const welcomeAnim = useRef(new Animated.Value(0)).current;
-  
-  // AI Flux Glow animations
-  const fluxGlow1 = useRef(new Animated.Value(0)).current;
-  const fluxGlow2 = useRef(new Animated.Value(0)).current;
-  const fluxGlow3 = useRef(new Animated.Value(0)).current;
-  const energyCore = useRef(new Animated.Value(0)).current;
-  const energyWave1 = useRef(new Animated.Value(0)).current;
-  const energyWave2 = useRef(new Animated.Value(0)).current;
-  const energyWave3 = useRef(new Animated.Value(0)).current;
-  const fluxPulse = useRef(new Animated.Value(1)).current;
-  const energyRotation = useRef(new Animated.Value(0)).current;
 
   const loadingSteps: LoadingStep[] = [
     { message: 'Loading resources...', duration: 600 },
@@ -65,87 +54,6 @@ export default function LaunchScreen() {
     return () => spinAnimation.stop();
   }, []);
 
-  // AI Flux Glow animations
-  useEffect(() => {
-    if (launchStatus === 'success' && isComingSoon) {
-      // Energy Core Pulse Animation
-      const coreAnimation = Animated.loop(
-        Animated.sequence([
-          Animated.timing(energyCore, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(energyCore, {
-            toValue: 0,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-
-      // Energy Wave Animations (staggered)
-      const createWaveAnimation = (animValue: Animated.Value, delay: number) => {
-        return Animated.loop(
-          Animated.sequence([
-            Animated.delay(delay),
-            Animated.timing(animValue, {
-              toValue: 1,
-              duration: 3000,
-              useNativeDriver: true,
-            }),
-            Animated.timing(animValue, {
-              toValue: 0,
-              duration: 1000,
-              useNativeDriver: true,
-            }),
-          ])
-        );
-      };
-
-      // Slow rotation for organic feel
-      const rotationAnimation = Animated.loop(
-        Animated.timing(energyRotation, {
-          toValue: 1,
-          duration: 12000,
-          useNativeDriver: true,
-        })
-      );
-
-      // Main pulse animation
-      const pulseAnimation = Animated.loop(
-        Animated.sequence([
-          Animated.timing(fluxPulse, {
-            toValue: 1.15,
-            duration: 2500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(fluxPulse, {
-            toValue: 1,
-            duration: 2500,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-
-      // Start all animations
-      coreAnimation.start();
-      createWaveAnimation(energyWave1, 0).start();
-      createWaveAnimation(energyWave2, 1000).start();
-      createWaveAnimation(energyWave3, 2000).start();
-      rotationAnimation.start();
-      pulseAnimation.start();
-
-      return () => {
-        energyCore.stopAnimation();
-        energyWave1.stopAnimation();
-        energyWave2.stopAnimation();
-        energyWave3.stopAnimation();
-        energyRotation.stopAnimation();
-        fluxPulse.stopAnimation();
-      };
-    }
-  }, [launchStatus, isComingSoon]);
   // Main loading sequence
   useEffect(() => {
     // Initialize sound manager
@@ -247,16 +155,6 @@ export default function LaunchScreen() {
     outputRange: ['0deg', '360deg'],
   });
 
-  const fluxRotate = fluxRotation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
-
-  const energyRotate = energyRotation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
-
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
@@ -337,88 +235,12 @@ export default function LaunchScreen() {
               }]}>
                 {isComingSoon ? (
                   <>
-                    {/* Energy Flux Ball Animation */}
-                    <View style={styles.energyFluxContainer}>
-                      {/* Outer Energy Waves */}
-                      <Animated.View style={[
-                        styles.energyWave,
-                        styles.energyWave1,
-                        {
-                          opacity: energyWave1.interpolate({
-                            inputRange: [0, 0.5, 1],
-                            outputRange: [0.2, 0.8, 0.2],
-                          }),
-                          transform: [
-                            { rotate: energyRotate },
-                            { scale: Animated.multiply(fluxPulse, energyWave1.interpolate({
-                              inputRange: [0, 1],
-                              outputRange: [1, 1.3],
-                            }))}
-                          ]
-                        }
-                      ]} />
-                      <Animated.View style={[
-                        styles.energyWave,
-                        styles.energyWave2,
-                        {
-                          opacity: energyWave2.interpolate({
-                            inputRange: [0, 0.5, 1],
-                            outputRange: [0.3, 0.9, 0.3],
-                          }),
-                          transform: [
-                            { rotate: energyRotate },
-                            { scale: Animated.multiply(fluxPulse, energyWave2.interpolate({
-                              inputRange: [0, 1],
-                              outputRange: [1, 1.2],
-                            }))}
-                          ]
-                        }
-                      ]} />
-                      <Animated.View style={[
-                        styles.energyWave,
-                        styles.energyWave3,
-                        {
-                          opacity: energyWave3.interpolate({
-                            inputRange: [0, 0.5, 1],
-                            outputRange: [0.4, 1, 0.4],
-                          }),
-                          transform: [
-                            { rotate: energyRotate },
-                            { scale: Animated.multiply(fluxPulse, energyWave3.interpolate({
-                              inputRange: [0, 1],
-                              outputRange: [1, 1.1],
-                            }))}
-                          ]
-                        }
-                      ]} />
-                      
-                      {/* Central Energy Core */}
-                      <Animated.View style={[
-                        styles.energyCore,
-                        {
-                          opacity: energyCore.interpolate({
-                            inputRange: [0, 0.5, 1],
-                            outputRange: [0.8, 1, 0.8],
-                          }),
-                          transform: [
-                            { scale: Animated.multiply(fluxPulse, energyCore.interpolate({
-                              inputRange: [0, 1],
-                              outputRange: [1, 1.1],
-                            }))},
-                            { rotate: energyRotate }
-                          ]
-                        }
-                      ]}>
-                        {/* Inner gradient layers */}
-                        <View style={styles.energyCoreInner}>
-                          <View style={styles.energyCoreCenter} />
-                        </View>
-                      </Animated.View>
+                    <View style={styles.comingSoonIcon}>
+                      <Text style={styles.comingSoonEmoji}>🚧</Text>
                     </View>
-                    
                     <Text style={styles.comingSoonTitle}>Coming Soon!</Text>
                     <Text style={styles.comingSoonMessage}>
-                      {product.title} is powering up with new broadcast intelligence
+                      {product.title} is currently under development
                     </Text>
                   </>
                 ) : (
@@ -463,19 +285,8 @@ export default function LaunchScreen() {
         }]}>
           <View style={styles.welcomeContent}>
             {isComingSoon ? (
-              <View style={styles.welcomeAiContainer}>
-                <Animated.View style={[
-                  styles.welcomeEnergyCore,
-                  {
-                    transform: [
-                      { rotate: energyRotate },
-                      { scale: fluxPulse }
-                    ]
-                  }
-                ]} />
-                <View style={styles.welcomeEnergyCoreInner}>
-                  <View style={styles.welcomeEnergyCoreCenter} />
-                </View>
+              <View style={styles.welcomeIcon}>
+                <Text style={styles.welcomeComingSoonEmoji}>🚧</Text>
               </View>
             ) : (
               <View style={styles.welcomeIcon}>
@@ -621,86 +432,6 @@ const styles = StyleSheet.create({
   successContainer: {
     alignItems: 'center',
   },
-  // Energy Flux Ball Styles
-  energyFluxContainer: {
-    width: 140,
-    height: 140,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  energyWave: {
-    position: 'absolute',
-    borderRadius: 100,
-  },
-  energyWave1: {
-    width: 140,
-    height: 140,
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.3)',
-    shadowColor: '#3b82f6',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 25,
-    elevation: 25,
-  },
-  energyWave2: {
-    width: 100,
-    height: 100,
-    backgroundColor: 'rgba(6, 182, 212, 0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(6, 182, 212, 0.4)',
-    shadowColor: '#06b6d4',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.7,
-    shadowRadius: 20,
-    elevation: 20,
-  },
-  energyWave3: {
-    width: 70,
-    height: 70,
-    backgroundColor: 'rgba(139, 92, 246, 0.25)',
-    borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.5)',
-    shadowColor: '#8b5cf6',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 15,
-    elevation: 15,
-  },
-  energyCore: {
-    width: 45,
-    height: 45,
-    borderRadius: 22.5,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(59, 130, 246, 0.9)',
-    shadowColor: '#3b82f6',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 20,
-    elevation: 20,
-  },
-  energyCoreInner: {
-    width: 35,
-    height: 35,
-    borderRadius: 17.5,
-    backgroundColor: 'rgba(6, 182, 212, 0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  energyCoreCenter: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    shadowColor: '#ffffff',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 10,
-    elevation: 10,
-  },
   successTitle: {
     fontSize: 24,
     fontWeight: 'bold',
@@ -759,42 +490,6 @@ const styles = StyleSheet.create({
   },
   welcomeIcon: {
     marginBottom: 24,
-  },
-  // Welcome AI Flux Styles
-  welcomeAiContainer: {
-    width: 80,
-    height: 80,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  welcomeEnergyCore: {
-    position: 'absolute',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(59, 130, 246, 0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.4)',
-    shadowColor: '#3b82f6',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 15,
-    elevation: 15,
-  },
-  welcomeEnergyCoreInner: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(59, 130, 246, 0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  welcomeEnergyCoreCenter: {
-    width: 15,
-    height: 15,
-    borderRadius: 7.5,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
   },
   welcomeTitle: {
     fontSize: 28,
@@ -864,19 +559,26 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 50,
   },
+  comingSoonIcon: {
+    marginBottom: 20,
+  },
+  comingSoonEmoji: {
+    fontSize: 80,
+  },
   comingSoonTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#3b82f6',
-    marginBottom: 12,
+    color: '#f59e0b',
+    marginBottom: 8,
     textAlign: 'center',
   },
   comingSoonMessage: {
     fontSize: 16,
-    color: '#06b6d4',
+    color: '#f59e0b',
     textAlign: 'center',
-    paddingHorizontal: 20,
-    lineHeight: 24,
+  },
+  welcomeComingSoonEmoji: {
+    fontSize: 48,
   },
   comingSoonButton: {
     flexDirection: 'row',
