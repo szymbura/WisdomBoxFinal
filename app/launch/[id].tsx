@@ -51,17 +51,15 @@ export default function LaunchScreen() {
 
   // Main loading sequence
   useEffect(() => {
+    // Initialize sound manager
+    soundManager.loadSounds();
+    
     if (launchStatus !== 'loading') return;
 
     const runLoadingSequence = async () => {
-      // Initialize audio with user interaction and play loading sound
-      console.log('🔊 Initializing audio and playing loading sound...');
-      const audioInitialized = await soundManager.initializeAudio();
-      if (audioInitialized) {
-        await soundManager.playLoadingSound();
-      } else {
-        console.log('🔊 Audio initialization failed, continuing without sound');
-      }
+      // Play short loading sound at the start
+      console.log('🔊 Playing loading sound...');
+      await soundManager.playLoadingSound();
       
       // Simulate random failure (10% chance)
       const shouldFail = Math.random() < 0.1;

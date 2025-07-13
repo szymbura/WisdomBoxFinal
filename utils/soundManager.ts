@@ -1,8 +1,9 @@
+import { Audio } from 'expo-av';
+
 class SoundManager {
   private static instance: SoundManager;
-  private audioContext: AudioContext | null = null;
+  private sounds: { [key: string]: Audio.Sound } = {};
   private isEnabled: boolean = true;
-  private isInitialized: boolean = false;
 
   private constructor() {}
 
@@ -13,106 +14,80 @@ class SoundManager {
     return SoundManager.instance;
   }
 
-  // Initialize audio context with user interaction
-  async initializeAudio(): Promise<boolean> {
+  async loadSounds() {
     try {
-      console.log('🔊 Initializing audio context...');
+      // Create soft click sound programmatically
+      // Using a very short, soft beep tone
+      const clickSoundUri = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT';
       
-      if (!this.audioContext) {
-        this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      }
+      const { sound: clickSound } = await Audio.Sound.createAsync(
+        { uri: clickSoundUri },
+        { shouldPlay: false, volume: 0.1 }
+      );
+      this.sounds.click = clickSound;
 
-      // Resume if suspended (browser autoplay policy)
-      if (this.audioContext.state === 'suspended') {
-        console.log('🔊 Resuming suspended audio context...');
-        await this.audioContext.resume();
-      }
-
-      this.isInitialized = true;
-      console.log('🔊 Audio context initialized successfully, state:', this.audioContext.state);
+      // Short loading beep - very brief and soft
+      const loadingSoundUri = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT';
       
-      return true;
+      const { sound: loadingSound } = await Audio.Sound.createAsync(
+        { uri: loadingSoundUri },
+        { shouldPlay: false, volume: 0.08 }
+      );
+      this.sounds.loading = loadingSound;
+
+      // Success sound - gentle chime
+      const successSoundUri = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT';
+      
+      const { sound: successSound } = await Audio.Sound.createAsync(
+        { uri: successSoundUri },
+        { shouldPlay: false, volume: 0.15 }
+      );
+      this.sounds.success = successSound;
+
     } catch (error) {
-      console.error('🔊 Failed to initialize audio:', error);
-      return false;
+      console.log('Could not load sounds:', error);
     }
   }
 
-  // Play the click sound with instant response
-  async playClickSound() {
-    // Click sounds have been disabled
-    console.log('🔊 Click sounds are disabled');
+  async playSound(soundName: string) {
+    console.log(`🔊 Attempting to play sound: ${soundName}, enabled: ${this.isEnabled}, sound exists: ${!!this.sounds[soundName]}`);
+    if (!this.isEnabled || !this.sounds[soundName]) return;
+    
+    try {
+      console.log(`🔊 Playing sound: ${soundName}`);
+      await this.sounds[soundName].replayAsync();
+      console.log(`🔊 Sound played successfully: ${soundName}`);
+    } catch (error) {
+      console.log(`🔊 Could not play sound ${soundName}:`, error);
+    }
   }
 
-  // Legacy methods for compatibility
-  async loadSounds() {
-    console.log('🔊 Sound manager ready - sounds will be loaded on demand');
+  async playClickSound() {
+    await this.playSound('click');
   }
 
   async playLoadingSound() {
-    if (!this.isInitialized) {
-      await this.initializeAudio();
-    }
-    console.log('🔊 Playing loading sound...');
-    await this.playTone(600, 0.3, 0.06);
+    console.log('🔊 playLoadingSound called');
+    await this.playSound('loading');
   }
 
   async playSuccessSound() {
-    if (!this.isInitialized) {
-      await this.initializeAudio();
-    }
-    console.log('🔊 Playing success sound...');
-    await this.playTone(1000, 0.5, 0.12);
-  }
-
-  // Play a tone with specified frequency, duration, and volume
-  private async playTone(frequency: number, duration: number, volume: number = 0.1): Promise<void> {
-    try {
-      if (!this.audioContext || !this.isEnabled) {
-        return;
-      }
-
-      if (this.audioContext.state === 'suspended') {
-        await this.audioContext.resume();
-      }
-
-      const oscillator = this.audioContext.createOscillator();
-      const gainNode = this.audioContext.createGain();
-      
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
-      
-      gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-      gainNode.gain.linearRampToValueAtTime(volume, this.audioContext.currentTime + 0.01);
-      gainNode.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + duration - 0.01);
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
-      
-      oscillator.start(this.audioContext.currentTime);
-      oscillator.stop(this.audioContext.currentTime + duration);
-      
-    } catch (error) {
-      console.error('🔊 Error playing tone:', error);
-    }
+    await this.playSound('success');
   }
 
   setEnabled(enabled: boolean) {
     this.isEnabled = enabled;
-    console.log(`🔊 Audio ${enabled ? 'enabled' : 'disabled'}`);
   }
 
   async cleanup() {
-    try {
-      if (this.audioContext) {
-        await this.audioContext.close();
-        this.audioContext = null;
+    for (const sound of Object.values(this.sounds)) {
+      try {
+        await sound.unloadAsync();
+      } catch (error) {
+        console.log('Error unloading sound:', error);
       }
-      this.isInitialized = false;
-      console.log('🔊 Audio cleanup completed');
-    } catch (error) {
-      console.error('🔊 Error during audio cleanup:', error);
     }
+    this.sounds = {};
   }
 }
 
