@@ -26,7 +26,10 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
   const translateX = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
+  console.log('FlipBook component loaded with pages:', pages.length);
+
   const handlePageTurn = (direction: 'next' | 'prev') => {
+    console.log('Page turn:', direction, 'current page:', currentPage);
     soundManager.playClickSound();
     
     // Page turn animation
@@ -51,6 +54,11 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
   };
 
   const formatContent = (content: string) => {
+    if (!content) {
+      console.log('No content provided for formatting');
+      return [<Text key="empty" style={styles.paragraphText}>No content available</Text>];
+    }
+    
     const lines = content.split('\n');
     return lines.map((line, index) => {
       if (line.trim().startsWith('•')) {
@@ -72,6 +80,17 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
   };
 
   const currentPageData = pages[currentPage];
+  
+  if (!currentPageData) {
+    console.log('No current page data available');
+    return (
+      <View style={styles.container}>
+        <Text style={{ color: 'white', textAlign: 'center', marginTop: 100 }}>
+          No content available
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

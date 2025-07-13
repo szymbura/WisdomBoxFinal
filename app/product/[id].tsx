@@ -40,7 +40,10 @@ export default function ProductScreen() {
         {product.id === 'ipdirector' && (
           <TouchableOpacity 
             style={styles.flipbookButton}
-            onPress={() => router.push(`/flipbook/${product.id}`)}
+            onPress={() => {
+              console.log('Opening flipbook for:', product.id);
+              router.push(`/flipbook/${product.id}`);
+            }}
           >
             <BookOpen size={20} color="#ffffff" />
             <Text style={styles.flipbookButtonText}>Open Digital Flipbook</Text>

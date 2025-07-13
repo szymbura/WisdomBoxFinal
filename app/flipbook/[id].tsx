@@ -9,8 +9,12 @@ export default function FlipBookScreen() {
   const product = evsProducts.find(p => p.id === id);
 
   if (!product) {
+    console.log('Product not found for flipbook:', id);
     return null;
   }
+
+  console.log('Loading flipbook for product:', product.title);
+  console.log('Wisdom blocks count:', product.wisdomBlocks.length);
 
   // Convert wisdom blocks to flipbook pages
   const pages = product.wisdomBlocks.map((block, index) => ({
@@ -21,7 +25,10 @@ export default function FlipBookScreen() {
     totalPages: product.wisdomBlocks.length,
   }));
 
+  console.log('Flipbook pages created:', pages.length);
+
   const handleClose = () => {
+    console.log('Closing flipbook');
     router.back();
   };
 
