@@ -98,13 +98,11 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
   
   const soundManager = SoundManager.getInstance();
   
-  // Animation values for natural page turning
-  const leftPageRotation = useRef(new Animated.Value(0)).current;
-  const rightPageRotation = useRef(new Animated.Value(0)).current;
+  // Animation values for Turn.js style page turning
+  const flipProgress = useRef(new Animated.Value(0)).current;
   const pageElevation = useRef(new Animated.Value(0)).current;
   const shadowIntensity = useRef(new Animated.Value(0)).current;
   const spineGlow = useRef(new Animated.Value(0)).current;
-  const pageCurl = useRef(new Animated.Value(0)).current;
 
   // Use IPDirector pages
   const bookPages = IPDIRECTOR_PAGES.map((page, index) => ({
@@ -129,39 +127,30 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
     }
     
     // Reset animation values
-    leftPageRotation.setValue(0);
-    rightPageRotation.setValue(0);
+    flipProgress.setValue(0);
     pageElevation.setValue(0);
     shadowIntensity.setValue(0);
     spineGlow.setValue(0);
-    pageCurl.setValue(0);
     
-    // Natural page turning animation
+    // Turn.js style page turning animation
     Animated.parallel([
-      // Left page rotation (0° to -180° when turning forward, -180° to 0° when turning back)
-      Animated.timing(leftPageRotation, {
-        toValue: direction === 'next' ? -180 : 0,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      
-      // Right page rotation (0° to 180° when turning back, 180° to 0° when turning forward)
-      Animated.timing(rightPageRotation, {
-        toValue: direction === 'prev' ? 180 : 0,
-        duration: 800,
-        useNativeDriver: true,
+      // Main flip progress (0 to 1)
+      Animated.timing(flipProgress, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: false,
       }),
       
       // Page elevation for depth
       Animated.sequence([
         Animated.timing(pageElevation, {
           toValue: 1,
-          duration: 400,
+          duration: 500,
           useNativeDriver: true,
         }),
         Animated.timing(pageElevation, {
           toValue: 0,
-          duration: 400,
+          duration: 500,
           useNativeDriver: true,
         }),
       ]),
@@ -170,12 +159,12 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
       Animated.sequence([
         Animated.timing(shadowIntensity, {
           toValue: 1,
-          duration: 400,
+          duration: 500,
           useNativeDriver: false,
         }),
         Animated.timing(shadowIntensity, {
           toValue: 0,
-          duration: 400,
+          duration: 500,
           useNativeDriver: false,
         }),
       ]),
@@ -184,27 +173,13 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
       Animated.sequence([
         Animated.timing(spineGlow, {
           toValue: 1,
-          duration: 400,
+          duration: 500,
           useNativeDriver: false,
         }),
         Animated.timing(spineGlow, {
           toValue: 0,
-          duration: 400,
+          duration: 500,
           useNativeDriver: false,
-        }),
-      ]),
-      
-      // Page curl effect
-      Animated.sequence([
-        Animated.timing(pageCurl, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pageCurl, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: true,
         }),
       ]),
     ]).start(() => {
@@ -241,45 +216,46 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
   const leftPageData = currentPage > 0 ? bookPages[currentPage - 1] : null;
   const rightPageData = currentPage < bookPages.length ? bookPages[currentPage] : null;
 
-  // Animation interpolations for natural page turning
-  const leftPageRotateY = leftPageRotation.interpolate({
-    inputRange: [-180, 0],
-    outputRange: ['-180deg', '0deg'],
+  // Turn.js style animation interpolations
+  const flipRotateY = flipProgress.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: flipDirection === 'next' ? ['0deg', '-90deg', '-180deg'] : ['0deg', '90deg', '180deg'],
   });
 
-  const rightPageRotateY = rightPageRotation.interpolate({
-    inputRange: [0, 180],
-    outputRange: ['0deg', '180deg'],
+  const flipScaleX = flipProgress.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [1, 0.8, 1],
+  });
+
+  const flipTranslateX = flipProgress.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, flipDirection === 'next' ? -20 : 20, 0],
   });
 
   const elevationZ = pageElevation.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 15],
+    outputRange: [0, 20],
   });
 
   const shadowOpacity = shadowIntensity.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.1, 0.6],
+    outputRange: [0.1, 0.8],
   });
 
   const shadowRadius = shadowIntensity.interpolate({
     inputRange: [0, 1],
-    outputRange: [5, 25],
+    outputRange: [5, 30],
   });
 
   const spineGlowOpacity = spineGlow.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.3, 0.8],
+    outputRange: [0.3, 1],
   });
 
-  const pageCurlScale = pageCurl.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 0.98],
-  });
-
-  const pageCurlSkew = pageCurl.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '1deg'],
+  // Page curl effect
+  const pageCurlGradient = flipProgress.interpolate({
+    inputRange: [0, 0.3, 0.7, 1],
+    outputRange: [0, 0.3, 0.7, 0],
   });
 
   return (
@@ -316,7 +292,7 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
               shadowOpacity: spineGlowOpacity,
               shadowRadius: spineGlow.interpolate({
                 inputRange: [0, 1],
-                outputRange: [4, 12],
+                outputRange: [4, 16],
               }),
             }
           ]}>
@@ -326,24 +302,8 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
           {/* Pages Container */}
           <View style={styles.pagesContainer}>
             
-            {/* Left Page */}
-            <Animated.View style={[
-              styles.leftPage,
-              {
-                transform: [
-                  { perspective: 1200 },
-                  { rotateY: leftPageRotateY },
-                  { translateZ: elevationZ },
-                  { scaleX: pageCurlScale },
-                  { skewY: pageCurlSkew },
-                ],
-                shadowOpacity: shadowOpacity,
-                shadowRadius: shadowRadius,
-                shadowOffset: { width: 5, height: 8 },
-                shadowColor: '#000000',
-                zIndex: isFlipping && flipDirection === 'next' ? 10 : 1,
-              }
-            ]}>
+            {/* Left Page - Static */}
+            <View style={styles.leftPageStatic}>
               {leftPageData ? (
                 <View style={styles.pageContent}>
                   <ScrollView style={styles.pageScroll} showsVerticalScrollIndicator={false}>
@@ -371,26 +331,10 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
                   </View>
                 </View>
               )}
-            </Animated.View>
+            </View>
 
-            {/* Right Page */}
-            <Animated.View style={[
-              styles.rightPage,
-              {
-                transform: [
-                  { perspective: 1200 },
-                  { rotateY: rightPageRotateY },
-                  { translateZ: elevationZ },
-                  { scaleX: pageCurlScale },
-                  { skewY: pageCurlSkew },
-                ],
-                shadowOpacity: shadowOpacity,
-                shadowRadius: shadowRadius,
-                shadowOffset: { width: -5, height: 8 },
-                shadowColor: '#000000',
-                zIndex: isFlipping && flipDirection === 'prev' ? 10 : 1,
-              }
-            ]}>
+            {/* Right Page - Static */}
+            <View style={styles.rightPageStatic}>
               {rightPageData ? (
                 <View style={styles.pageContent}>
                   <ScrollView style={styles.pageScroll} showsVerticalScrollIndicator={false}>
@@ -414,7 +358,69 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
                   </View>
                 </View>
               )}
-            </Animated.View>
+            </View>
+
+            {/* Animated Flipping Page Overlay */}
+            {isFlipping && (
+              <Animated.View style={[
+                styles.flippingPageOverlay,
+                flipDirection === 'next' ? styles.flippingRightPage : styles.flippingLeftPage,
+                {
+                  transform: [
+                    { perspective: 1200 },
+                    { translateX: flipTranslateX },
+                    { rotateY: flipRotateY },
+                    { scaleX: flipScaleX },
+                    { translateZ: elevationZ },
+                  ],
+                  shadowOpacity: shadowOpacity,
+                  shadowRadius: shadowRadius,
+                  shadowOffset: { 
+                    width: flipDirection === 'next' ? 10 : -10, 
+                    height: 15 
+                  },
+                  shadowColor: '#000000',
+                  zIndex: 10,
+                }
+              ]}>
+                {/* Page curl gradient overlay */}
+                <Animated.View style={[
+                  styles.pageCurlOverlay,
+                  {
+                    opacity: pageCurlGradient,
+                    background: flipDirection === 'next' 
+                      ? 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.3) 100%)'
+                      : 'linear-gradient(to left, transparent 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.3) 100%)'
+                  }
+                ]} />
+                
+                {/* Flipping page content */}
+                <View style={styles.pageContent}>
+                  <ScrollView style={styles.pageScroll} showsVerticalScrollIndicator={false}>
+                    <View style={styles.contentPadding}>
+                      {flipDirection === 'next' && rightPageData && (
+                        <>
+                          <Text style={styles.pageTitle}>{rightPageData.title}</Text>
+                          <View style={styles.contentArea}>
+                            {formatContent(rightPageData.content)}
+                          </View>
+                          <Text style={styles.pageNumber}>{rightPageData.pageNumber}</Text>
+                        </>
+                      )}
+                      {flipDirection === 'prev' && leftPageData && (
+                        <>
+                          <Text style={styles.pageTitle}>{leftPageData.title}</Text>
+                          <View style={styles.contentArea}>
+                            {formatContent(leftPageData.content)}
+                          </View>
+                          <Text style={styles.pageNumber}>{leftPageData.pageNumber}</Text>
+                        </>
+                      )}
+                    </View>
+                  </ScrollView>
+                </View>
+              </Animated.View>
+            )}
 
             {/* Binding Shadow */}
             <Animated.View style={[
@@ -422,7 +428,7 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
               {
                 opacity: shadowIntensity.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [0.2, 0.8],
+                  outputRange: [0.2, 0.9],
                 }),
               }
             ]} />
@@ -502,7 +508,7 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#2c1810',
   },
   header: {
     flexDirection: 'row',
@@ -511,9 +517,9 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingHorizontal: 20,
     paddingBottom: 16,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: '#3d2817',
     borderBottomWidth: 1,
-    borderBottomColor: '#444',
+    borderBottomColor: '#5d4037',
   },
   closeButton: {
     padding: 8,
@@ -549,34 +555,36 @@ const styles = StyleSheet.create({
     height: BOOK_HEIGHT,
     position: 'relative',
     backgroundColor: '#8B4513',
-    borderRadius: 12,
-    padding: 8,
+    borderRadius: 16,
+    padding: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 15 },
+    shadowOpacity: 0.4,
+    shadowRadius: 25,
+    elevation: 15,
   },
   bookSpine: {
     position: 'absolute',
     left: '50%',
-    top: 8,
-    bottom: 8,
-    width: 12,
+    top: 12,
+    bottom: 12,
+    width: 16,
     backgroundColor: '#654321',
-    borderRadius: 6,
-    transform: [{ translateX: -6 }],
+    borderRadius: 8,
+    transform: [{ translateX: -8 }],
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 15,
+    zIndex: 20,
     shadowColor: '#D4AF37',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
-    elevation: 5,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#8B4513',
   },
   spineText: {
     color: '#D4AF37',
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: 'bold',
     transform: [{ rotate: '90deg' }],
     textAlign: 'center',
@@ -585,88 +593,122 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     backgroundColor: 'transparent',
-    borderRadius: 8,
+    borderRadius: 12,
     overflow: 'visible',
     position: 'relative',
   },
-  leftPage: {
-    width: PAGE_WIDTH - 6,
+  leftPageStatic: {
+    width: PAGE_WIDTH - 8,
     height: '100%',
-    backgroundColor: '#fafafa',
-    borderTopLeftRadius: 8,
-    borderBottomLeftRadius: 8,
+    backgroundColor: '#fefefe',
+    borderTopLeftRadius: 12,
+    borderBottomLeftRadius: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 2, height: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 3, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
+    borderRightWidth: 1,
+    borderRightColor: '#e5e5e5',
+  },
+  rightPageStatic: {
+    width: PAGE_WIDTH - 8,
+    height: '100%',
+    backgroundColor: '#fefefe',
+    borderTopRightRadius: 12,
+    borderBottomRightRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: -3, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
+    borderLeftWidth: 1,
+    borderLeftColor: '#e5e5e5',
+  },
+  flippingPageOverlay: {
+    position: 'absolute',
+    top: 0,
+    height: '100%',
+    backgroundColor: '#fefefe',
+    shadowColor: '#000000',
+    elevation: 10,
+  },
+  flippingRightPage: {
+    right: 0,
+    width: PAGE_WIDTH - 8,
+    borderTopRightRadius: 12,
+    borderBottomRightRadius: 12,
+    transformOrigin: 'left center',
+  },
+  flippingLeftPage: {
+    left: 0,
+    width: PAGE_WIDTH - 8,
+    borderTopLeftRadius: 12,
+    borderBottomLeftRadius: 12,
     transformOrigin: 'right center',
   },
-  rightPage: {
-    width: PAGE_WIDTH - 6,
-    height: '100%',
-    backgroundColor: '#fafafa',
-    borderTopRightRadius: 8,
-    borderBottomRightRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: -2, height: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-    transformOrigin: 'left center',
+  pageCurlOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 12,
+    zIndex: 1,
   },
   pageContent: {
     flex: 1,
     backgroundColor: 'transparent',
+    zIndex: 2,
   },
   pageScroll: {
     flex: 1,
   },
   contentPadding: {
-    padding: 20,
+    padding: 24,
     minHeight: '100%',
   },
   pageTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#1e293b',
-    marginBottom: 16,
-    lineHeight: 24,
+    marginBottom: 20,
+    lineHeight: 26,
   },
   contentArea: {
     flex: 1,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   paragraphText: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#374151',
-    lineHeight: 18,
-    marginBottom: 10,
+    lineHeight: 20,
+    marginBottom: 12,
     textAlign: 'justify',
   },
   bulletPoint: {
     flexDirection: 'row',
-    marginBottom: 6,
-    paddingLeft: 6,
+    marginBottom: 8,
+    paddingLeft: 8,
   },
   bullet: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#3b82f6',
-    marginRight: 6,
+    marginRight: 8,
     fontWeight: 'bold',
-    minWidth: 12,
+    minWidth: 14,
   },
   bulletText: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#374151',
-    lineHeight: 18,
+    lineHeight: 20,
     flex: 1,
   },
   spacer: {
-    height: 6,
+    height: 8,
   },
   pageNumber: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#9ca3af',
     textAlign: 'center',
     fontStyle: 'italic',
@@ -677,40 +719,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 30,
     backgroundColor: '#1e293b',
-    borderTopLeftRadius: 8,
-    borderBottomLeftRadius: 8,
+    borderTopLeftRadius: 12,
+    borderBottomLeftRadius: 12,
   },
   coverContent: {
     alignItems: 'center',
   },
   coverTitle: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#ffffff',
-    marginBottom: 8,
+    marginBottom: 10,
     textAlign: 'center',
   },
   coverSubtitle: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#3b82f6',
-    marginBottom: 4,
+    marginBottom: 6,
     textAlign: 'center',
     fontWeight: '600',
   },
   coverTagline: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#94a3b8',
     textAlign: 'center',
-    marginBottom: 25,
+    marginBottom: 30,
   },
   coverDecoration: {
-    marginBottom: 25,
+    marginBottom: 30,
   },
   coverDescription: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#cbd5e1',
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 18,
   },
   endPage: {
     flex: 1,
@@ -718,40 +760,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 30,
     backgroundColor: '#f8fafc',
-    borderTopRightRadius: 8,
-    borderBottomRightRadius: 8,
+    borderTopRightRadius: 12,
+    borderBottomRightRadius: 12,
   },
   endContent: {
     alignItems: 'center',
   },
   endTitle: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: 'bold',
     color: '#1e293b',
-    marginTop: 20,
-    marginBottom: 12,
+    marginTop: 24,
+    marginBottom: 16,
     textAlign: 'center',
   },
   endDescription: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#64748b',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
   },
   bindingShadow: {
     position: 'absolute',
     left: '50%',
     top: 0,
     bottom: 0,
-    width: 4,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    transform: [{ translateX: -2 }],
+    width: 6,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    transform: [{ translateX: -3 }],
     zIndex: 1,
   },
   controlsContainer: {
-    backgroundColor: '#2a2a2a',
+    backgroundColor: '#3d2817',
     borderTopWidth: 1,
-    borderTopColor: '#444',
+    borderTopColor: '#5d4037',
     paddingBottom: 10,
   },
   controls: {
@@ -768,7 +810,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 8,
-    minWidth: 100,
+    minWidth: 110,
   },
   navButtonDisabled: {
     backgroundColor: '#374151',
@@ -795,7 +837,7 @@ const styles = StyleSheet.create({
   },
   moduleTitle: {
     fontSize: 12,
-    color: '#64748b',
+    color: '#94a3b8',
     marginTop: 4,
     textAlign: 'center',
   },
@@ -810,7 +852,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 6,
-    backgroundColor: '#374151',
+    backgroundColor: '#5d4037',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
