@@ -69,9 +69,10 @@ class SoundManager {
       
       // Try multiple URL formats for maximum compatibility
       const soundUrls = [
+        '/fin click.wav',
+        './fin click.wav',
         '/fin-click.wav',
-        './fin-click.wav',
-        'https://github.com/szymbura/WisdomBoxFinal/raw/main/fin%20click.wav'
+        'https://github.com/szymbura/WisdomBoxFinal/raw/9d4980149c1264ffb8852a43198503c901997f9b/fin%20click.wav'
       ];
 
       let response: Response | null = null;
