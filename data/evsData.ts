@@ -30,33 +30,33 @@ export const evsProducts: Product[] = [
       {
         id: 'ipdirector-workflow-basics',
         title: 'IPDirector: User Playbook',
-        description: 'Comprehensive guide to IPDirector features and capabilities',
-        content: 'IPDirector is an incredibly powerful tool within the EVS suite, designed to maximize the efficiency, creativity, and control for any broadcast operation. It combines robust hardware with intuitive Windows-based software, creating an environment where media management becomes seamless and familiar—even for users new to EVS systems.',
+        description: 'The Ultimate Creative Hub for Broadcast Production',
+        content: 'IPDirector, a cornerstone of the EVS suite, is a powerhouse tool that redefines efficiency, creativity, and control in broadcast operations. By seamlessly blending robust hardware with intuitive Windows-based software, it delivers a familiar and streamlined media management experience, even for those new to EVS systems. Whether you\'re crafting highlight reels, managing live replays, or orchestrating complex playlists, IPDirector empowers your team to focus on storytelling, not technicalities.',
         tags: ['ipdirector', 'media-management', 'editing', 'interface'],
         interactiveContent: [
           {
-            title: "IPDirector: User Playbook",
-            text: "IPDirector is an incredibly powerful tool within the EVS suite, designed to maximize the efficiency, creativity, and control for any broadcast operation. It combines robust hardware with intuitive Windows-based software, creating an environment where media management becomes seamless and familiar—even for users new to EVS systems."
+            title: "IPDirector: The Ultimate Creative Hub for Broadcast Production",
+            text: "IPDirector, a cornerstone of the EVS suite, is a powerhouse tool that redefines efficiency, creativity, and control in broadcast operations. By seamlessly blending robust hardware with intuitive Windows-based software, it delivers a familiar and streamlined media management experience, even for those new to EVS systems. Whether you're crafting highlight reels, managing live replays, or orchestrating complex playlists, IPDirector empowers your team to focus on storytelling, not technicalities."
           },
           {
             title: "Intuitive Windows-Based Interface",
-            text: "Unlike classic replay or server control panels based on \"pages\" and \"banks,\" IPDirector offers a modern, visual, and user-friendly interface. It features:\n\n• Thumbnails and metadata display for every clip, making it easy to identify, preview, and organize content.\n• Comprehensive search and filtering tools—just use the search bar to instantly find clips across all connected servers.\n• Multi-window navigation, so users can work with multiple bins, playlists, and tasks simultaneously."
+            text: "Unlike traditional replay or server control panels reliant on rigid \"pages\" and \"banks,\" IPDirector introduces a modern, visual, and user-friendly interface designed for speed and simplicity. Key features include:\n\n• Visual Clip Management: Thumbnails and metadata for every clip enable quick identification, previewing, and organization.\n• Powerful Search Tools: A robust search bar instantly locates clips across all connected EVS servers, with advanced filtering for precision.\n• Multi-Window Workflow: Work seamlessly across multiple bins, playlists, and tasks in a flexible, multi-window environment.\n\nThis intuitive design ensures operators can navigate with ease, boosting productivity in high-pressure broadcast settings."
           },
           {
-            title: "Import, Export, and Networked Content Control",
-            text: "IPDirector transforms the workflow by allowing operators to:\n\n• Ingest, export, and import files using a Windows-like logic—simply drag and drop between directories or servers.\n• Manage content across a network, accessing clips on any connected EVS server instantly.\n• Edit clips, perform slow motion and replays, and manage all assets in real time.\n\nThis all-in-one access enables the creative team to stay focused on storytelling, not file management."
+            title: "Streamlined Content Control",
+            text: "IPDirector transforms media workflows by offering unparalleled flexibility in content management:\n\n• Effortless File Operations: Ingest, export, and import files using familiar Windows-like logic, with drag-and-drop functionality between directories and servers.\n• Networked Access: Instantly access and manage clips across any connected EVS server, ensuring real-time collaboration.\n• Live Editing & Replays: Edit clips, create slow-motion sequences, and manage assets on the fly, keeping your production dynamic and responsive.\n\nBy centralizing these functions, IPDirector frees creative teams to prioritize storytelling over file management."
           },
           {
-            title: "Timeline Editing & Advanced Playlist Management with IP Edit",
-            text: "One of the core strengths of IPDirector is its powerful timeline editing functionality, especially through tools like IP Edit.\n\n• Visual Timeline: Work directly on a modern, intuitive timeline to arrange, trim, and combine clips—just like in top-tier non-linear editors, but live and connected to the EVS ecosystem.\n• Instant Previews: Operators can instantly see the result of edits, supporting fast turnaround and high-pressure environments.\n• Drag-and-Drop Highlights: Quickly assemble and fine-tune highlight packages or full playlists with minimal clicks."
+            title: "Advanced Timeline Editing with IP Edit",
+            text: "At the heart of IPDirector's creative power is IP Edit, a robust timeline editing tool that rivals top-tier non-linear editors while staying fully integrated with the EVS ecosystem. Key capabilities include:\n\n• Visual Timeline: Arrange, trim, and combine clips directly on an intuitive timeline, designed for live production speed.\n• Instant Previews: See edit results in real time, enabling fast decision-making in high-stakes environments.\n• Drag-and-Drop Highlights: Build and refine highlight packages or full playlists with minimal effort, streamlining production workflows."
           },
           {
-            title: "Clip and Playlist Editing: Advanced Features",
-            text: "With IPDirector and IP Edit, users get access to a range of advanced playlist features, empowering even more complex productions:\n\n• Advanced Playlist Functions: Go beyond simple sequencing—use advanced functions for show rundowns and dynamic edits.\n• Virtual Elements: Add placeholders, virtual clips, or dynamic elements directly into playlists for flexible live production.\n• Color Coding: Assign colors to clips and playlist segments to quickly spot key plays, transitions, or ad breaks.\n• Breaks: Insert breaks or pauses to control the broadcast flow.\n• Timed Playback: Set clips or playlists to automatically start at a given time, perfect for scheduled playout and automated rundown scenarios.\n• Clip and Playlist Edit: Use the timeline to edit both individual clips and entire playlists, supporting advanced workflow needs such as segmenting, merging, or refining highlight reels."
+            title: "Sophisticated Playlist Management",
+            text: "IPDirector and IP Edit elevate playlist creation with advanced features tailored for complex productions:\n\n• Dynamic Playlist Functions: Go beyond basic sequencing with tools for show rundowns, dynamic edits, and flexible playlist assembly.\n• Virtual Elements: Incorporate placeholders, virtual clips, or dynamic elements into playlists for adaptable live production.\n• Color Coding: Assign colors to clips and playlist segments to quickly identify key moments, transitions, or ad breaks.\n• Breaks and Pauses: Insert breaks to control broadcast flow, ensuring seamless pacing.\n• Timed Playback: Schedule clips or playlists to start automatically, ideal for automated rundowns or precise playout.\n• Comprehensive Editing: Use the timeline to edit individual clips or entire playlists, supporting advanced workflows like segmenting, merging, or refining highlight reels."
           },
           {
-            title: "A True Creative Hub for Live Production",
-            text: "With its blend of hardware reliability and software innovation, IPDirector serves as a creative hub at the heart of the EVS server network. Whether you're managing hundreds of clips, building highlight reels on the fly, or scheduling complex playlists, IPDirector and IP Edit make it easy, efficient, and—most importantly—intuitive."
+            title: "The Heart of Live Production",
+            text: "With its blend of reliable hardware and innovative software, IPDirector serves as a creative hub within the EVS server network. Whether managing hundreds of clips, assembling highlight reels on the fly, or scheduling intricate playlists, IPDirector and IP Edit deliver unmatched efficiency and intuition. This powerful tool empowers broadcast teams to create compelling content with confidence, making it an indispensable asset for live production."
           }
         ]
       },
