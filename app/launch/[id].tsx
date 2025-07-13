@@ -6,6 +6,9 @@ import { useState, useEffect, useRef } from 'react';
 import { evsProducts } from '@/data/evsData';
 import SoundManager from '@/utils/soundManager';
 
+// Products that show "Coming Soon" instead of launching
+const COMING_SOON_PRODUCTS = ['xt3', 'multicam-lsm', 'xt-via'];
+
 type LoadingStep = {
   message: string;
   duration: number;
@@ -16,9 +19,11 @@ export default function LaunchScreen() {
   const [launchStatus, setLaunchStatus] = useState<'loading' | 'success' | 'error' | 'complete'>('loading');
   const [currentStep, setCurrentStep] = useState(0);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [isComingSoon, setIsComingSoon] = useState(false);
   
   const soundManager = SoundManager.getInstance();
   const product = evsProducts.find(p => p.id === id);
+  const isComingSoonProduct = COMING_SOON_PRODUCTS.includes(id || '');
   
   // Animation values
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -33,7 +38,7 @@ export default function LaunchScreen() {
     { message: 'Preparing interface...', duration: 500 },
     { message: 'Connecting to database...', duration: 700 },
     { message: 'Loading articles...', duration: 600 },
-    { message: `${product?.title} successfully initialized`, duration: 500 }
+    { message: isComingSoonProduct ? 'Checking availability...' : `${product?.title} successfully initialized`, duration: 500 }
   ];
 
   // Spinning animation for loader
@@ -85,7 +90,13 @@ export default function LaunchScreen() {
       
       // Success sequence
       soundManager.playSuccessSound();
-      setLaunchStatus('success');
+      
+      if (isComingSoonProduct) {
+        setIsComingSoon(true);
+        setLaunchStatus('success');
+      } else {
+        setLaunchStatus('success');
+      }
       
       // Success animation
       Animated.sequence([
@@ -124,6 +135,7 @@ export default function LaunchScreen() {
     successAnim.setValue(0);
     welcomeAnim.setValue(0);
     setShowWelcome(false);
+    setIsComingSoon(false);
   };
 
   const handleViewArticles = () => {
@@ -221,11 +233,25 @@ export default function LaunchScreen() {
                 opacity: successAnim,
                 transform: [{ scale: successAnim }]
               }]}>
-                <CheckCircle size={80} color="#10b981" />
-                <Text style={styles.successTitle}>Initialization Complete!</Text>
-                <Text style={styles.successMessage}>
-                  {product.title} is ready to use
-                </Text>
+                {isComingSoon ? (
+                  <>
+                    <View style={styles.comingSoonIcon}>
+                      <Text style={styles.comingSoonEmoji}>🚧</Text>
+                    </View>
+                    <Text style={styles.comingSoonTitle}>Coming Soon!</Text>
+                    <Text style={styles.comingSoonMessage}>
+                      {product.title} is currently under development
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle size={80} color="#10b981" />
+                    <Text style={styles.successTitle}>Initialization Complete!</Text>
+                    <Text style={styles.successMessage}>
+                      {product.title} is ready to use
+                    </Text>
+                  </>
+                )}
               </Animated.View>
             )}
           </View>
@@ -258,33 +284,55 @@ export default function LaunchScreen() {
           }]
         }]}>
           <View style={styles.welcomeContent}>
-            <View style={styles.welcomeIcon}>
-              <CheckCircle size={48} color="#10b981" />
-            </View>
+            {isComingSoon ? (
+              <View style={styles.welcomeIcon}>
+                <Text style={styles.welcomeComingSoonEmoji}>🚧</Text>
+              </View>
+            ) : (
+              <View style={styles.welcomeIcon}>
+                <CheckCircle size={48} color="#10b981" />
+              </View>
+            )}
             
-            <Text style={styles.welcomeTitle}>Welcome to {product.title}</Text>
-            <Text style={styles.welcomeDescription}>
-              Access comprehensive knowledge base, troubleshooting guides, and best practices.
-            </Text>
 
-            <TouchableOpacity style={styles.articlesButton} onPress={handleViewArticles}>
-              <Text style={styles.articlesButtonText}>View Articles</Text>
-              <ExternalLink size={20} color="#ffffff" style={styles.buttonIcon} />
-            </TouchableOpacity>
+            {isComingSoon ? (
+              <>
+                <Text style={styles.welcomeTitle}>{product.title} - Coming Soon</Text>
+                <Text style={styles.welcomeDescription}>
+                  This tool is currently under development. Check back soon for the full experience with comprehensive knowledge base and interactive features.
+                </Text>
+                
+                <TouchableOpacity style={styles.comingSoonButton} onPress={handleViewArticles}>
+                  <Text style={styles.comingSoonButtonText}>View Available Content</Text>
+                  <ExternalLink size={20} color="#ffffff" style={styles.buttonIcon} />
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.welcomeTitle}>Welcome to {product.title}</Text>
+                <Text style={styles.welcomeDescription}>
+                  Access comprehensive knowledge base, troubleshooting guides, and best practices.
+                </Text>
 
+                <TouchableOpacity style={styles.articlesButton} onPress={handleViewArticles}>
+                  <Text style={styles.articlesButtonText}>View Articles</Text>
+                  <ExternalLink size={20} color="#ffffff" style={styles.buttonIcon} />
+                </TouchableOpacity>
+              </>
+            )}
             {/* Tool Status */}
             <View style={styles.statusCard}>
               <View style={styles.statusIndicator}>
                 <View style={[
                   styles.statusDot,
-                  { backgroundColor: product.status === 'online' ? '#10b981' : '#ef4444' }
+                  { backgroundColor: isComingSoon ? '#f59e0b' : (product.status === 'online' ? '#10b981' : '#ef4444') }
                 ]} />
                 <Text style={styles.statusText}>
-                  System Status: {product.status.charAt(0).toUpperCase() + product.status.slice(1)}
+                  System Status: {isComingSoon ? 'In Development' : product.status.charAt(0).toUpperCase() + product.status.slice(1)}
                 </Text>
               </View>
               <Text style={styles.statusDescription}>
-                {product.wisdomBlocks.length} knowledge articles available
+                {isComingSoon ? 'Development in progress' : `${product.wisdomBlocks.length} knowledge articles available`}
               </Text>
             </View>
           </View>
@@ -510,5 +558,41 @@ const styles = StyleSheet.create({
     color: '#ef4444',
     textAlign: 'center',
     marginTop: 50,
+  },
+  comingSoonIcon: {
+    marginBottom: 20,
+  },
+  comingSoonEmoji: {
+    fontSize: 80,
+  },
+  comingSoonTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#f59e0b',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  comingSoonMessage: {
+    fontSize: 16,
+    color: '#f59e0b',
+    textAlign: 'center',
+  },
+  welcomeComingSoonEmoji: {
+    fontSize: 48,
+  },
+  comingSoonButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f59e0b',
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginBottom: 40,
+  },
+  comingSoonButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginRight: 8,
   },
 });
