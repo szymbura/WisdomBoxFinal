@@ -32,6 +32,13 @@ export default function LaunchScreen() {
   const progressAnim = useRef(new Animated.Value(0)).current;
   const successAnim = useRef(new Animated.Value(0)).current;
   const welcomeAnim = useRef(new Animated.Value(0)).current;
+  
+  // AI Flux Glow animations
+  const fluxGlow1 = useRef(new Animated.Value(0)).current;
+  const fluxGlow2 = useRef(new Animated.Value(0)).current;
+  const fluxGlow3 = useRef(new Animated.Value(0)).current;
+  const fluxRotation = useRef(new Animated.Value(0)).current;
+  const fluxPulse = useRef(new Animated.Value(1)).current;
 
   const loadingSteps: LoadingStep[] = [
     { message: 'Loading resources...', duration: 600 },
@@ -54,6 +61,66 @@ export default function LaunchScreen() {
     return () => spinAnimation.stop();
   }, []);
 
+  // AI Flux Glow animations
+  useEffect(() => {
+    if (launchStatus === 'success' && isComingSoon) {
+      // Start flux glow animations
+      const createFluxAnimation = (animValue: Animated.Value, delay: number) => {
+        return Animated.loop(
+          Animated.sequence([
+            Animated.delay(delay),
+            Animated.timing(animValue, {
+              toValue: 1,
+              duration: 2000,
+              useNativeDriver: true,
+            }),
+            Animated.timing(animValue, {
+              toValue: 0,
+              duration: 2000,
+              useNativeDriver: true,
+            }),
+          ])
+        );
+      };
+
+      const rotationAnimation = Animated.loop(
+        Animated.timing(fluxRotation, {
+          toValue: 1,
+          duration: 8000,
+          useNativeDriver: true,
+        })
+      );
+
+      const pulseAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(fluxPulse, {
+            toValue: 1.1,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(fluxPulse, {
+            toValue: 1,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+
+      createFluxAnimation(fluxGlow1, 0).start();
+      createFluxAnimation(fluxGlow2, 800).start();
+      createFluxAnimation(fluxGlow3, 1600).start();
+      rotationAnimation.start();
+      pulseAnimation.start();
+
+      return () => {
+        fluxGlow1.stopAnimation();
+        fluxGlow2.stopAnimation();
+        fluxGlow3.stopAnimation();
+        fluxRotation.stopAnimation();
+        fluxPulse.stopAnimation();
+      };
+    }
+  }, [launchStatus, isComingSoon]);
   // Main loading sequence
   useEffect(() => {
     // Initialize sound manager
@@ -155,6 +222,10 @@ export default function LaunchScreen() {
     outputRange: ['0deg', '360deg'],
   });
 
+  const fluxRotate = fluxRotation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
@@ -235,6 +306,52 @@ export default function LaunchScreen() {
               }]}>
                 {isComingSoon ? (
                   <>
+                    {/* AI Flux Glow Animation */}
+                    <View style={styles.aiFluxContainer}>
+                      <Animated.View style={[
+                        styles.fluxGlow,
+                        styles.fluxGlow1,
+                        {
+                          opacity: fluxGlow1,
+                          transform: [
+                            { rotate: fluxRotate },
+                            { scale: fluxPulse }
+                          ]
+                        }
+                      ]} />
+                      <Animated.View style={[
+                        styles.fluxGlow,
+                        styles.fluxGlow2,
+                        {
+                          opacity: fluxGlow2,
+                          transform: [
+                            { rotate: fluxRotate },
+                            { scale: fluxPulse }
+                          ]
+                        }
+                      ]} />
+                      <Animated.View style={[
+                        styles.fluxGlow,
+                        styles.fluxGlow3,
+                        {
+                          opacity: fluxGlow3,
+                          transform: [
+                            { rotate: fluxRotate },
+                            { scale: fluxPulse }
+                          ]
+                        }
+                      ]} />
+                      
+                      {/* Central AI Core */}
+                      <Animated.View style={[
+                        styles.aiCore,
+                        {
+                          transform: [{ scale: fluxPulse }]
+                        }
+                      ]}>
+                        <Text style={styles.aiCoreText}>🤖</Text>
+                      </Animated.View>
+                    </View>
                     <View style={styles.comingSoonIcon}>
                       <Text style={styles.comingSoonEmoji}>🚧</Text>
                     </View>
@@ -285,8 +402,19 @@ export default function LaunchScreen() {
         }]}>
           <View style={styles.welcomeContent}>
             {isComingSoon ? (
-              <View style={styles.welcomeIcon}>
-                <Text style={styles.welcomeComingSoonEmoji}>🚧</Text>
+              <View style={styles.welcomeAiContainer}>
+                <Animated.View style={[
+                  styles.welcomeFluxGlow,
+                  {
+                    transform: [
+                      { rotate: fluxRotate },
+                      { scale: fluxPulse }
+                    ]
+                  }
+                ]} />
+                <View style={styles.welcomeAiCore}>
+                  <Text style={styles.welcomeAiEmoji}>🤖</Text>
+                </View>
               </View>
             ) : (
               <View style={styles.welcomeIcon}>
@@ -432,6 +560,67 @@ const styles = StyleSheet.create({
   successContainer: {
     alignItems: 'center',
   },
+  // AI Flux Glow Styles
+  aiFluxContainer: {
+    width: 120,
+    height: 120,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  fluxGlow: {
+    position: 'absolute',
+    borderRadius: 60,
+    borderWidth: 2,
+  },
+  fluxGlow1: {
+    width: 120,
+    height: 120,
+    borderColor: '#3b82f6',
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  fluxGlow2: {
+    width: 90,
+    height: 90,
+    borderColor: '#06b6d4',
+    shadowColor: '#06b6d4',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 15,
+    elevation: 15,
+  },
+  fluxGlow3: {
+    width: 60,
+    height: 60,
+    borderColor: '#8b5cf6',
+    shadowColor: '#8b5cf6',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  aiCore: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#1e293b',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#3b82f6',
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 15,
+    elevation: 15,
+  },
+  aiCoreText: {
+    fontSize: 24,
+  },
   successTitle: {
     fontSize: 24,
     fontWeight: 'bold',
@@ -490,6 +679,40 @@ const styles = StyleSheet.create({
   },
   welcomeIcon: {
     marginBottom: 24,
+  },
+  // Welcome AI Flux Styles
+  welcomeAiContainer: {
+    width: 80,
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  welcomeFluxGlow: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 2,
+    borderColor: '#3b82f6',
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 15,
+    elevation: 15,
+  },
+  welcomeAiCore: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#1e293b',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#3b82f6',
+  },
+  welcomeAiEmoji: {
+    fontSize: 20,
   },
   welcomeTitle: {
     fontSize: 28,
@@ -559,12 +782,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 50,
   },
-  comingSoonIcon: {
-    marginBottom: 20,
-  },
-  comingSoonEmoji: {
-    fontSize: 80,
-  },
   comingSoonTitle: {
     fontSize: 24,
     fontWeight: 'bold',
@@ -576,9 +793,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#f59e0b',
     textAlign: 'center',
-  },
-  welcomeComingSoonEmoji: {
-    fontSize: 48,
   },
   comingSoonButton: {
     flexDirection: 'row',
