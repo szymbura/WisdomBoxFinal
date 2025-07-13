@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, Pressable, Animated, Dimensions, ScrollView } from 'react-native';
 import { ChevronLeft, ChevronRight, Volume2, VolumeX, X } from 'lucide-react-native';
-import SoundManager from '../utils/soundManager';
+import SoundManager from '@/utils/soundManager';
 
 interface FlipBookPage {
   title: string;
