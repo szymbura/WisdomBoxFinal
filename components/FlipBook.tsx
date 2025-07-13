@@ -1,7 +1,6 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
-import { useState, useRef } from 'react';
-import { Animated } from 'react-native';
-import { ChevronLeft, ChevronRight, BookOpen, Chrome as Home } from 'lucide-react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Animated, PanResponder } from 'react-native';
+import { useState, useRef, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, BookOpen, Chrome as Home, Volume2, VolumeX } from 'lucide-react-native';
 import { router } from 'expo-router';
 import SoundManager from '@/utils/soundManager';
 
@@ -18,41 +17,231 @@ interface FlipBookProps {
   onClose: () => void;
 }
 
-const { width: screenWidth } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const BOOK_WIDTH = Math.min(screenWidth * 0.9, 800);
+const BOOK_HEIGHT = Math.min(screenHeight * 0.75, 600);
+const PAGE_WIDTH = BOOK_WIDTH / 2;
 
 export function FlipBook({ pages, onClose }: FlipBookProps) {
   const [currentPage, setCurrentPage] = useState(0);
+  const [isFlipping, setIsFlipping] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [dragStartX, setDragStartX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  
   const soundManager = SoundManager.getInstance();
-  const translateX = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(1)).current;
+  
+  // Animation values for realistic page flipping
+  const flipProgress = useRef(new Animated.Value(0)).current;
+  const pageRotateY = useRef(new Animated.Value(0)).current;
+  const pageCurlX = useRef(new Animated.Value(0)).current;
+  const shadowOpacity = useRef(new Animated.Value(0)).current;
+  const pageElevation = useRef(new Animated.Value(0)).current;
+  const cornerHover = useRef(new Animated.Value(0)).current;
+  
+  // Book spine and binding animations
+  const spineGlow = useRef(new Animated.Value(0)).current;
+  const bookScale = useRef(new Animated.Value(1)).current;
 
   console.log('FlipBook - Component loaded with pages:', pages.length);
   console.log('FlipBook - Pages data:', pages.map(p => ({ title: p.title, content: p.content.substring(0, 50) + '...' })));
 
-  const handlePageTurn = (direction: 'next' | 'prev') => {
-    console.log('FlipBook - Page turn:', direction, 'current page:', currentPage);
-    soundManager.playClickSound();
+  // Pan responder for drag-to-flip functionality
+  const panResponder = PanResponder.create({
+    onStartShouldSetPanResponder: (evt, gestureState) => {
+      const touchX = evt.nativeEvent.locationX;
+      const isRightEdge = touchX > PAGE_WIDTH * 0.8;
+      const isLeftEdge = touchX < PAGE_WIDTH * 0.2;
+      return isRightEdge || isLeftEdge;
+    },
     
-    // Page turn animation
-    Animated.sequence([
-      Animated.timing(scaleAnim, {
-        toValue: 0.95,
-        duration: 150,
+    onMoveShouldSetPanResponder: (evt, gestureState) => {
+      return Math.abs(gestureState.dx) > 10;
+    },
+    
+    onPanResponderGrant: (evt, gestureState) => {
+      setDragStartX(evt.nativeEvent.locationX);
+      setIsDragging(true);
+      
+      // Start corner hover effect
+      Animated.timing(cornerHover, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: false,
+      }).start();
+    },
+    
+    onPanResponderMove: (evt, gestureState) => {
+      if (!isDragging) return;
+      
+      const progress = Math.abs(gestureState.dx) / (PAGE_WIDTH * 0.5);
+      const clampedProgress = Math.min(Math.max(progress, 0), 1);
+      
+      // Update flip animations in real-time
+      flipProgress.setValue(clampedProgress);
+      pageRotateY.setValue(clampedProgress * 180);
+      pageCurlX.setValue(gestureState.dx * 0.5);
+      shadowOpacity.setValue(clampedProgress * 0.3);
+      pageElevation.setValue(clampedProgress * 10);
+    },
+    
+    onPanResponderRelease: (evt, gestureState) => {
+      setIsDragging(false);
+      
+      const shouldFlip = Math.abs(gestureState.dx) > PAGE_WIDTH * 0.3;
+      const isRightSwipe = gestureState.dx > 0;
+      
+      if (shouldFlip) {
+        if (isRightSwipe && currentPage > 0) {
+          handlePageTurn('prev');
+        } else if (!isRightSwipe && currentPage < pages.length - 1) {
+          handlePageTurn('next');
+        } else {
+          resetPageAnimation();
+        }
+      } else {
+        resetPageAnimation();
+      }
+      
+      // End corner hover effect
+      Animated.timing(cornerHover, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: false,
+      }).start();
+    },
+  });
+
+  const resetPageAnimation = () => {
+    Animated.parallel([
+      Animated.timing(flipProgress, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: false,
+      }),
+      Animated.timing(pageRotateY, {
+        toValue: 0,
+        duration: 300,
         useNativeDriver: true,
       }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 150,
+      Animated.timing(pageCurlX, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shadowOpacity, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: false,
+      }),
+      Animated.timing(pageElevation, {
+        toValue: 0,
+        duration: 300,
         useNativeDriver: true,
       }),
     ]).start();
-
-    if (direction === 'next' && currentPage < pages.length - 1) {
-      setCurrentPage(currentPage + 1);
-    } else if (direction === 'prev' && currentPage > 0) {
-      setCurrentPage(currentPage - 1);
-    }
   };
+
+  const handlePageTurn = (direction: 'next' | 'prev') => {
+    if (isFlipping) return;
+    
+    console.log('FlipBook - Page turn:', direction, 'current page:', currentPage);
+    setIsFlipping(true);
+    
+    // Play page turn sound
+    if (soundEnabled) {
+      soundManager.playClickSound();
+    }
+    
+    // Realistic page flip animation sequence
+    Animated.sequence([
+      // Page lift and curl
+      Animated.parallel([
+        Animated.timing(pageElevation, {
+          toValue: 15,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shadowOpacity, {
+          toValue: 0.4,
+          duration: 200,
+          useNativeDriver: false,
+        }),
+        Animated.timing(spineGlow, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: false,
+        }),
+      ]),
+      
+      // Main flip animation
+      Animated.parallel([
+        Animated.timing(flipProgress, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: false,
+        }),
+        Animated.timing(pageRotateY, {
+          toValue: direction === 'next' ? -180 : 180,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pageCurlX, {
+          toValue: direction === 'next' ? -PAGE_WIDTH * 0.1 : PAGE_WIDTH * 0.1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ]),
+      
+      // Page settle
+      Animated.parallel([
+        Animated.timing(pageElevation, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shadowOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: false,
+        }),
+        Animated.timing(spineGlow, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: false,
+        }),
+      ]),
+    ]).start(() => {
+      // Update page and reset animations
+      if (direction === 'next' && currentPage < pages.length - 1) {
+        setCurrentPage(currentPage + 1);
+      } else if (direction === 'prev' && currentPage > 0) {
+        setCurrentPage(currentPage - 1);
+      }
+      
+      // Reset all animation values
+      flipProgress.setValue(0);
+      pageRotateY.setValue(0);
+      pageCurlX.setValue(0);
+      setIsFlipping(false);
+    });
+  };
+
+  // Book opening animation on mount
+  useEffect(() => {
+    Animated.sequence([
+      Animated.timing(bookScale, {
+        toValue: 1.05,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(bookScale, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   const formatContent = (content: string) => {
     if (!content) {
@@ -106,66 +295,164 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <BookOpen size={24} color="#3b82f6" />
-          <Text style={styles.headerTitle}>IPDirector Flipbook</Text>
+          <Text style={styles.headerTitle}>IPDirector Digital Book</Text>
         </View>
-        <View style={styles.headerRight}>
-          <Text style={styles.pageCounter}>
-            {currentPage + 1} / {pages.length}
-          </Text>
-        </View>
+        <TouchableOpacity 
+          style={styles.soundButton} 
+          onPress={() => setSoundEnabled(!soundEnabled)}
+        >
+          {soundEnabled ? (
+            <Volume2 size={20} color="#ffffff" />
+          ) : (
+            <VolumeX size={20} color="#64748b" />
+          )}
+        </TouchableOpacity>
       </View>
 
-      {/* Flipbook Content */}
-      <Animated.View style={[styles.bookContainer, { transform: [{ scale: scaleAnim }] }]}>
-        <View style={styles.book}>
-          {/* Left Page Shadow */}
-          <View style={styles.leftShadow} />
+      {/* Book Container */}
+      <View style={styles.bookWrapper}>
+        <Animated.View style={[
+          styles.bookContainer,
+          {
+            transform: [{ scale: bookScale }]
+          }
+        ]}>
           
-          {/* Main Page */}
-          <ScrollView style={styles.page} showsVerticalScrollIndicator={false}>
-            <View style={styles.pageContent}>
-              {/* Page Header */}
-              <View style={styles.pageHeader}>
-                <Text style={styles.moduleTitle}>{currentPageData.title}</Text>
-                <View style={styles.pageIndicator}>
-                  <Text style={styles.pageNumber}>Page {currentPage + 1}</Text>
+          {/* Book Spine with Glow Effect */}
+          <Animated.View style={[
+            styles.bookSpine,
+            {
+              shadowOpacity: spineGlow.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.2, 0.6],
+              }),
+            }
+          ]}>
+            <Text style={styles.spineText}>IPDirector</Text>
+          </Animated.View>
+
+          {/* Left Page (Previous or Cover) */}
+          <View style={styles.leftPage}>
+            {currentPage > 0 ? (
+              <ScrollView style={styles.pageScroll} showsVerticalScrollIndicator={false}>
+                <View style={styles.pageContent}>
+                  <Text style={styles.pageTitle}>
+                    {pages[currentPage - 1]?.title}
+                  </Text>
+                  <View style={styles.contentArea}>
+                    {formatContent(pages[currentPage - 1]?.content || '')}
+                  </View>
+                  <Text style={styles.pageNumber}>{currentPage}</Text>
                 </View>
+              </ScrollView>
+            ) : (
+              <View style={styles.coverPage}>
+                <Text style={styles.coverTitle}>IPDirector</Text>
+                <Text style={styles.coverSubtitle}>User Playbook</Text>
+                <View style={styles.coverDecoration} />
               </View>
+            )}
+          </View>
 
-              {/* Content */}
-              <View style={styles.contentArea}>
-                {formatContent(currentPageData.content)}
-              </View>
+          {/* Right Page with Flip Animation */}
+          <Animated.View 
+            style={[
+              styles.rightPage,
+              {
+                transform: [
+                  { perspective: 1000 },
+                  { rotateY: pageRotateY.interpolate({
+                    inputRange: [-180, 0, 180],
+                    outputRange: ['-180deg', '0deg', '180deg'],
+                  }) },
+                  { translateX: pageCurlX },
+                  { translateZ: pageElevation },
+                ],
+                shadowOpacity: shadowOpacity,
+                shadowOffset: {
+                  width: shadowOpacity.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 10],
+                  }),
+                  height: shadowOpacity.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 15],
+                  }),
+                },
+              }
+            ]}
+            {...panResponder.panHandlers}
+          >
+            {/* Page Curl Effect */}
+            <Animated.View style={[
+              styles.pageCurl,
+              {
+                opacity: flipProgress.interpolate({
+                  inputRange: [0, 0.5, 1],
+                  outputRange: [0, 0.3, 0],
+                }),
+                transform: [
+                  { translateX: pageCurlX },
+                  { skewX: flipProgress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0deg', '15deg'],
+                  }) },
+                ],
+              }
+            ]} />
 
-              {/* Page Footer */}
-              <View style={styles.pageFooter}>
-                <Text style={styles.footerText}>IPDirector User Playbook</Text>
-                <View style={styles.progressDots}>
-                  {pages.map((_, index) => (
-                    <View
-                      key={index}
-                      style={[
-                        styles.progressDot,
-                        index === currentPage && styles.progressDotActive
-                      ]}
-                    />
-                  ))}
+            {/* Corner Hover Indicator */}
+            <Animated.View style={[
+              styles.cornerIndicator,
+              {
+                opacity: cornerHover,
+                transform: [
+                  { scale: cornerHover.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.8, 1.2],
+                  }) }
+                ],
+              }
+            ]} />
+
+            <ScrollView style={styles.pageScroll} showsVerticalScrollIndicator={false}>
+              <View style={styles.pageContent}>
+                <Text style={styles.pageTitle}>{currentPageData.title}</Text>
+                <View style={styles.contentArea}>
+                  {formatContent(currentPageData.content)}
                 </View>
+                <Text style={styles.pageNumber}>{currentPage + 1}</Text>
               </View>
-            </View>
-          </ScrollView>
+            </ScrollView>
 
-          {/* Right Page Shadow */}
-          <View style={styles.rightShadow} />
-        </View>
-      </Animated.View>
+            {/* Paper Texture Overlay */}
+            <View style={styles.paperTexture} />
+          </Animated.View>
+
+          {/* Page Edge Thickness */}
+          <View style={styles.pageEdges}>
+            {Array.from({ length: Math.min(pages.length, 20) }, (_, i) => (
+              <View 
+                key={i} 
+                style={[
+                  styles.pageEdge,
+                  { 
+                    right: i * 0.5,
+                    opacity: i < currentPage ? 0.3 : 0.7,
+                  }
+                ]} 
+              />
+            ))}
+          </View>
+        </Animated.View>
+      </View>
 
       {/* Navigation Controls */}
       <View style={styles.controls}>
         <TouchableOpacity
           style={[styles.navButton, currentPage === 0 && styles.navButtonDisabled]}
           onPress={() => handlePageTurn('prev')}
-          disabled={currentPage === 0}
+          disabled={currentPage === 0 || isFlipping}
         >
           <ChevronLeft size={24} color={currentPage === 0 ? "#64748b" : "#ffffff"} />
           <Text style={[styles.navButtonText, currentPage === 0 && styles.navButtonTextDisabled]}>
@@ -175,6 +462,9 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
 
         <View style={styles.centerInfo}>
           <Text style={styles.currentModule}>
+            Page {currentPage + 1} of {pages.length}
+          </Text>
+          <Text style={styles.moduleTitle}>
             Module {currentPageData.moduleIndex + 1}
           </Text>
         </View>
@@ -182,7 +472,7 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
         <TouchableOpacity
           style={[styles.navButton, currentPage === pages.length - 1 && styles.navButtonDisabled]}
           onPress={() => handlePageTurn('next')}
-          disabled={currentPage === pages.length - 1}
+          disabled={currentPage === pages.length - 1 || isFlipping}
         >
           <Text style={[styles.navButtonText, currentPage === pages.length - 1 && styles.navButtonTextDisabled]}>
             Next
@@ -191,24 +481,28 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
         </TouchableOpacity>
       </View>
 
-      {/* Quick Navigation */}
-      <View style={styles.quickNav}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.quickNavScroll}>
+      {/* Page Thumbnails */}
+      <View style={styles.thumbnailStrip}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbnailScroll}>
           {pages.map((page, index) => (
             <TouchableOpacity
               key={index}
               style={[
-                styles.quickNavItem,
-                index === currentPage && styles.quickNavItemActive
+                styles.thumbnail,
+                index === currentPage && styles.thumbnailActive
               ]}
               onPress={() => {
-                soundManager.playClickSound();
-                setCurrentPage(index);
+                if (!isFlipping && index !== currentPage) {
+                  setCurrentPage(index);
+                  if (soundEnabled) {
+                    soundManager.playClickSound();
+                  }
+                }
               }}
             >
               <Text style={[
-                styles.quickNavText,
-                index === currentPage && styles.quickNavTextActive
+                styles.thumbnailText,
+                index === currentPage && styles.thumbnailTextActive
               ]}>
                 {index + 1}
               </Text>
@@ -223,7 +517,7 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#0a0a0a',
   },
   header: {
     flexDirection: 'row',
@@ -232,9 +526,9 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingHorizontal: 20,
     paddingBottom: 16,
-    backgroundColor: '#1e293b',
+    backgroundColor: '#1a1a1a',
     borderBottomWidth: 1,
-    borderBottomColor: '#334155',
+    borderBottomColor: '#333',
   },
   closeButton: {
     padding: 8,
@@ -251,137 +545,189 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     marginLeft: 8,
   },
-  headerRight: {
-    minWidth: 60,
-    alignItems: 'flex-end',
+  soundButton: {
+    padding: 8,
   },
-  pageCounter: {
-    fontSize: 14,
-    color: '#64748b',
-    fontWeight: '500',
+  bookWrapper: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
   bookContainer: {
-    flex: 1,
-    padding: 20,
-    justifyContent: 'center',
-  },
-  book: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    elevation: 8,
+    width: BOOK_WIDTH,
+    height: BOOK_HEIGHT,
+    flexDirection: 'row',
+    backgroundColor: '#2a2a2a',
+    borderRadius: 8,
+    elevation: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    position: 'relative',
+  },
+  bookSpine: {
+    width: 20,
+    height: '100%',
+    backgroundColor: '#1a1a1a',
+    borderTopLeftRadius: 8,
+    borderBottomLeftRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  spineText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: 'bold',
+    transform: [{ rotate: '-90deg' }],
+  },
+  leftPage: {
+    width: PAGE_WIDTH - 10,
+    height: '100%',
+    backgroundColor: '#f8f9fa',
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 0,
+  },
+  rightPage: {
+    width: PAGE_WIDTH - 10,
+    height: '100%',
+    backgroundColor: '#f8f9fa',
+    borderTopRightRadius: 8,
+    borderBottomRightRadius: 8,
+    shadowColor: '#000',
+    shadowRadius: 15,
+    elevation: 10,
     position: 'relative',
     overflow: 'hidden',
   },
-  leftShadow: {
+  pageCurl: {
     position: 'absolute',
-    left: 0,
     top: 0,
-    bottom: 0,
-    width: 20,
-    backgroundColor: 'rgba(0,0,0,0.1)',
-    zIndex: 1,
-  },
-  rightShadow: {
-    position: 'absolute',
     right: 0,
+    width: 50,
+    height: 50,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    borderBottomLeftRadius: 50,
+  },
+  cornerIndicator: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 20,
+    height: 20,
+    backgroundColor: 'rgba(59, 130, 246, 0.3)',
+    borderRadius: 10,
+    zIndex: 10,
+  },
+  paperTexture: {
+    position: 'absolute',
     top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    opacity: 0.5,
+  },
+  pageEdges: {
+    position: 'absolute',
+    top: 0,
+    right: -10,
     bottom: 0,
     width: 20,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    zIndex: 1,
   },
-  page: {
+  pageEdge: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 1,
+    backgroundColor: '#ddd',
+  },
+  coverPage: {
     flex: 1,
-    backgroundColor: '#fefefe',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+    backgroundColor: '#1e293b',
+  },
+  coverTitle: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  coverSubtitle: {
+    fontSize: 18,
+    color: '#3b82f6',
+    marginBottom: 40,
+    textAlign: 'center',
+  },
+  coverDecoration: {
+    width: 100,
+    height: 4,
+    backgroundColor: '#3b82f6',
+    borderRadius: 2,
+  },
+  pageScroll: {
+    flex: 1,
   },
   pageContent: {
     padding: 24,
     paddingHorizontal: 32,
     minHeight: '100%',
   },
-  pageHeader: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#3b82f6',
-    paddingBottom: 16,
-    marginBottom: 24,
-  },
-  moduleTitle: {
-    fontSize: 24,
+  pageTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#1e293b',
-    marginBottom: 8,
-    lineHeight: 32,
-  },
-  pageIndicator: {
-    alignSelf: 'flex-end',
-  },
-  pageNumber: {
-    fontSize: 12,
-    color: '#64748b',
-    fontWeight: '500',
+    marginBottom: 20,
+    lineHeight: 28,
+    borderBottomWidth: 2,
+    borderBottomColor: '#3b82f6',
+    paddingBottom: 12,
   },
   contentArea: {
     flex: 1,
-    marginBottom: 40,
+    marginBottom: 30,
   },
   paragraphText: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#374151',
-    lineHeight: 26,
-    marginBottom: 16,
+    lineHeight: 22,
+    marginBottom: 12,
     textAlign: 'justify',
   },
   bulletPoint: {
     flexDirection: 'row',
-    marginBottom: 12,
+    marginBottom: 8,
     paddingLeft: 8,
   },
   bullet: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#3b82f6',
     marginRight: 12,
     fontWeight: 'bold',
     minWidth: 16,
   },
   bulletText: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#374151',
-    lineHeight: 24,
+    lineHeight: 20,
     flex: 1,
   },
   spacer: {
-    height: 12,
+    height: 8,
   },
-  pageFooter: {
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-    paddingTop: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  footerText: {
+  pageNumber: {
     fontSize: 12,
     color: '#9ca3af',
+    textAlign: 'center',
     fontStyle: 'italic',
-  },
-  progressDots: {
-    flexDirection: 'row',
-    gap: 4,
-  },
-  progressDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#d1d5db',
-  },
-  progressDotActive: {
-    backgroundColor: '#3b82f6',
   },
   controls: {
     flexDirection: 'row',
@@ -389,9 +735,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#1e293b',
+    backgroundColor: '#1a1a1a',
     borderTopWidth: 1,
-    borderTopColor: '#334155',
+    borderTopColor: '#333',
   },
   navButton: {
     flexDirection: 'row',
@@ -403,7 +749,7 @@ const styles = StyleSheet.create({
     minWidth: 100,
   },
   navButtonDisabled: {
-    backgroundColor: '#334155',
+    backgroundColor: '#374151',
     opacity: 0.5,
   },
   navButtonText: {
@@ -423,33 +769,52 @@ const styles = StyleSheet.create({
     color: '#cbd5e1',
     fontWeight: '500',
   },
-  quickNav: {
-    backgroundColor: '#1e293b',
+  moduleTitle: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  thumbnailStrip: {
+    backgroundColor: '#1a1a1a',
     paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: '#334155',
+    borderTopColor: '#333',
   },
-  quickNavScroll: {
+  thumbnailScroll: {
     paddingHorizontal: 20,
   },
-  quickNavItem: {
+  thumbnail: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: '#334155',
+    borderRadius: 6,
+    backgroundColor: '#374151',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
-  quickNavItemActive: {
+  thumbnailActive: {
     backgroundColor: '#3b82f6',
+    borderColor: '#60a5fa',
   },
-  quickNavText: {
-    fontSize: 14,
+  thumbnailText: {
+    fontSize: 12,
     fontWeight: '600',
     color: '#cbd5e1',
   },
-  quickNavTextActive: {
+  thumbnailTextActive: {
     color: '#ffffff',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    color: '#ffffff',
+    fontSize: 18,
+    textAlign: 'center',
   },
 });
