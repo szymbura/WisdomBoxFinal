@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, Animated, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Animated, Dimensions, ScrollView } from 'react-native';
 import { ChevronLeft, ChevronRight, Volume2, VolumeX, X } from 'lucide-react-native';
 import SoundManager from '../utils/soundManager';
 
@@ -25,7 +25,6 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
   
   const soundManager = SoundManager.getInstance();
   const flipAnimation = useRef(new Animated.Value(0)).current;
-  const shadowAnimation = useRef(new Animated.Value(0)).current;
 
   const totalPages = pages.length;
 
@@ -38,22 +37,14 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
       soundManager.playClickSound();
     }
 
-    // Animate the page flip and shadow
-    Animated.parallel([
-      Animated.timing(flipAnimation, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.timing(shadowAnimation, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: false,
-      })
-    ]).start(() => {
+    // Simple slide animation to next page
+    Animated.timing(flipAnimation, {
+      toValue: 1,
+      duration: 600,
+      useNativeDriver: true,
+    }).start(() => {
       setCurrentPage(currentPage + 1);
       flipAnimation.setValue(0);
-      shadowAnimation.setValue(0);
       setIsFlipping(false);
     });
   };
@@ -67,22 +58,14 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
       soundManager.playClickSound();
     }
 
-    // Animate the page flip and shadow
-    Animated.parallel([
-      Animated.timing(flipAnimation, {
-        toValue: -1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.timing(shadowAnimation, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: false,
-      })
-    ]).start(() => {
+    // Simple slide animation to previous page
+    Animated.timing(flipAnimation, {
+      toValue: -1,
+      duration: 600,
+      useNativeDriver: true,
+    }).start(() => {
       setCurrentPage(currentPage - 1);
       flipAnimation.setValue(0);
-      shadowAnimation.setValue(0);
       setIsFlipping(false);
     });
   };
@@ -91,56 +74,17 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
     setSoundEnabled(!soundEnabled);
   };
 
-  const renderPage = (page: FlipBookPage | null, isLeft: boolean = false) => {
-    if (!page) {
-      return (
-        <View style={[styles.page, isLeft ? styles.leftPage : styles.rightPage]}>
-          <Text style={styles.emptyPageText}>End of Book</Text>
-        </View>
-      );
-    }
+  const currentPageData = pages[currentPage];
 
-    return (
-      <View style={[styles.page, isLeft ? styles.leftPage : styles.rightPage]}>
-        <Text style={styles.pageTitle}>{page.title}</Text>
-        <Text style={styles.pageContent}>{page.content}</Text>
-        <Text style={styles.pageNumber}>{page.pageNumber}</Text>
-      </View>
-    );
-  };
-
-  // Calculate the current left and right pages
-  const leftPage = currentPage > 0 ? pages[currentPage - 1] : null;
-  const rightPage = pages[currentPage];
-  const nextPage = currentPage < totalPages - 1 ? pages[currentPage + 1] : null;
-  const prevPage = currentPage > 1 ? pages[currentPage - 2] : null;
-
-  // Animation transforms for realistic page turning
-  const pageRotateY = flipAnimation.interpolate({
-    inputRange: [-1, 0, 1],
-    outputRange: ['0deg', '0deg', '-180deg'],
-  });
-
+  // Animation transforms for simple page transition
   const pageTranslateX = flipAnimation.interpolate({
     inputRange: [-1, 0, 1],
-    outputRange: [0, 0, 0],
+    outputRange: [screenWidth, 0, -screenWidth],
   });
 
-  const pageScale = flipAnimation.interpolate({
-    inputRange: [-1, -0.5, 0, 0.5, 1],
-    outputRange: [1, 0.95, 1, 0.95, 1],
-  });
-
-  // Shadow opacity for depth effect
-  const shadowOpacity = shadowAnimation.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [0, 0.3, 0],
-  });
-
-  // Page curl effect
-  const curlTransform = flipAnimation.interpolate({
-    inputRange: [0, 0.3, 0.7, 1],
-    outputRange: [0, 15, 45, 0],
+  const pageOpacity = flipAnimation.interpolate({
+    inputRange: [-0.5, 0, 0.5],
+    outputRange: [0, 1, 0],
   });
 
   return (
@@ -162,83 +106,25 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
         </View>
       </View>
 
-      {/* Book Container */}
-      <View style={styles.bookContainer}>
-        <View style={styles.book}>
-          {/* Book Spine */}
-          <View style={styles.spine} />
-          
-          {/* Left Page (Static) */}
-          <View style={styles.leftPageContainer}>
-            {renderPage(leftPage, true)}
-          </View>
-
-          {/* Right Page (Static - underneath) */}
-          <View style={styles.rightPageContainer}>
-            {renderPage(isFlipping && flipAnimation._value > 0 ? nextPage : rightPage, false)}
-          </View>
-
-          {/* Flipping Page (Animated) */}
-          {isFlipping && (
-            <Animated.View
-              style={[
-                styles.flippingPage,
-                {
-                  transform: [
-                    { perspective: 1000 },
-                    { rotateY: pageRotateY },
-                    { translateX: pageTranslateX },
-                    { scale: pageScale },
-                  ],
-                  zIndex: 10,
-                }
-              ]}
-            >
-              {/* Front of flipping page */}
-              <View style={[styles.page, styles.rightPage, { backfaceVisibility: 'hidden' }]}>
-                {flipAnimation._value > 0 ? renderPage(rightPage, false) : renderPage(leftPage, true)}
-              </View>
-              
-              {/* Back of flipping page */}
-              <View style={[
-                styles.page, 
-                styles.leftPage, 
-                { 
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  backfaceVisibility: 'hidden',
-                  transform: [{ rotateY: '180deg' }]
-                }
-              ]}>
-                {flipAnimation._value > 0 ? renderPage(nextPage, false) : renderPage(prevPage, true)}
-              </View>
-
-              {/* Page curl shadow */}
-              <Animated.View
-                style={[
-                  styles.pageCurl,
-                  {
-                    opacity: shadowOpacity,
-                    transform: [{ rotate: `${curlTransform}deg` }],
-                  }
-                ]}
-              />
-            </Animated.View>
-          )}
-
-          {/* Book shadow */}
-          <Animated.View
-            style={[
-              styles.bookShadow,
-              {
-                opacity: shadowOpacity,
-              }
-            ]}
-          />
-        </View>
+      {/* Single Page Container */}
+      <View style={styles.pageContainer}>
+        <Animated.View
+          style={[
+            styles.page,
+            {
+              transform: [{ translateX: pageTranslateX }],
+              opacity: pageOpacity,
+            }
+          ]}
+        >
+          <ScrollView style={styles.pageScrollView} showsVerticalScrollIndicator={false}>
+            <Text style={styles.pageTitle}>{currentPageData?.title}</Text>
+            <Text style={styles.pageContent}>{currentPageData?.content}</Text>
+          </ScrollView>
+          <Text style={styles.pageNumber}>
+            {currentPageData?.pageNumber} / {currentPageData?.totalPages}
+          </Text>
+        </Animated.View>
       </View>
 
       {/* Navigation */}
@@ -312,17 +198,16 @@ const styles = StyleSheet.create({
   closeButton: {
     padding: 8,
   },
-  bookContainer: {
+  pageContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 40,
   },
-  book: {
-    width: Math.min(screenWidth - 40, 700),
+  page: {
+    width: Math.min(screenWidth - 40, 600),
     height: Math.min(screenHeight * 0.65, 500),
-    flexDirection: 'row',
     backgroundColor: '#fff',
     borderRadius: 8,
     shadowColor: '#000',
@@ -330,95 +215,32 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 16,
     elevation: 8,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  spine: {
-    width: 4,
-    backgroundColor: '#d0d0d0',
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: '50%',
-    marginLeft: -2,
-    zIndex: 5,
-  },
-  leftPageContainer: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  rightPageContainer: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  flippingPage: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: '50%',
-    height: '100%',
-    backgroundColor: '#fff',
-  },
-  page: {
-    flex: 1,
     padding: 24,
-    backgroundColor: '#fff',
-    justifyContent: 'flex-start',
   },
-  leftPage: {
-    borderRightWidth: 1,
-    borderRightColor: '#f0f0f0',
-  },
-  rightPage: {
-    borderLeftWidth: 1,
-    borderLeftColor: '#f0f0f0',
+  pageScrollView: {
+    flex: 1,
   },
   pageTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
     color: '#333',
     marginBottom: 20,
     textAlign: 'center',
-    lineHeight: 28,
+    lineHeight: 30,
   },
   pageContent: {
-    fontSize: 14,
-    lineHeight: 22,
+    fontSize: 16,
+    lineHeight: 24,
     color: '#555',
     textAlign: 'justify',
-    flex: 1,
   },
   pageNumber: {
     position: 'absolute',
     bottom: 16,
     right: 24,
-    fontSize: 12,
+    fontSize: 14,
     color: '#999',
-  },
-  emptyPageText: {
-    fontSize: 18,
-    color: '#999',
-    textAlign: 'center',
-    marginTop: 100,
-    fontStyle: 'italic',
-  },
-  pageCurl: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 20,
-    height: 20,
-    backgroundColor: 'rgba(0,0,0,0.1)',
-    borderBottomLeftRadius: 20,
-  },
-  bookShadow: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: '50%',
-    width: 20,
-    backgroundColor: 'rgba(0,0,0,0.1)',
-    zIndex: 1,
+    fontWeight: '500',
   },
   navigation: {
     flexDirection: 'row',
