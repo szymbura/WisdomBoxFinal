@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Animated } from 'react-native';
 import { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, BookOpen, Home, Volume2, VolumeX } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, BookOpen, Chrome as Home, Volume2, VolumeX } from 'lucide-react-native';
 import { router } from 'expo-router';
 import SoundManager from '@/utils/soundManager';
 
