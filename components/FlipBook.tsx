@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, Pressable, Animated, Dimensions } from 'react-native';
 import { ChevronLeft, ChevronRight, Volume2, VolumeX } from 'lucide-react-native';
-import { soundManager } from '../utils/soundManager';
+import SoundManager from '../utils/soundManager';
 
 interface FlipBookProps {
   pages: Array<{
@@ -18,6 +18,7 @@ export function FlipBook({ pages }: FlipBookProps) {
   const [currentPage, setCurrentPage] = useState(0);
   const [isFlipping, setIsFlipping] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const soundManager = SoundManager.getInstance();
   const flipAnimation = useRef(new Animated.Value(0)).current;
 
   const totalPages = pages.length;
@@ -29,7 +30,7 @@ export function FlipBook({ pages }: FlipBookProps) {
     
     setIsFlipping(true);
     if (soundEnabled) {
-      soundManager.playPageTurn();
+      soundManager.playClickSound();
     }
 
     Animated.timing(flipAnimation, {
@@ -48,7 +49,7 @@ export function FlipBook({ pages }: FlipBookProps) {
     
     setIsFlipping(true);
     if (soundEnabled) {
-      soundManager.playPageTurn();
+      soundManager.playClickSound();
     }
 
     Animated.timing(flipAnimation, {
