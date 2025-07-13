@@ -26,7 +26,36 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
   const soundManager = SoundManager.getInstance();
   const flipAnimation = useRef(new Animated.Value(0)).current;
 
-  const totalPages = pages.length;
+  // IPDirector content split into pages
+  const ipDirectorContent = [
+    {
+      title: "IPDirector: The Ultimate Creative Hub",
+      content: "IPDirector, a cornerstone of the EVS suite, is a powerhouse tool that redefines efficiency, creativity, and control in broadcast operations. By seamlessly blending robust hardware with intuitive Windows-based software, it delivers a familiar and streamlined media management experience, even for those new to EVS systems. Whether you're crafting highlight reels, managing live replays, or orchestrating complex playlists, IPDirector empowers your team to focus on storytelling, not technicalities."
+    },
+    {
+      title: "Intuitive Windows-Based Interface",
+      content: "Unlike traditional replay or server control panels reliant on rigid \"pages\" and \"banks,\" IPDirector introduces a modern, visual, and user-friendly interface designed for speed and simplicity. Key features include:\n\nVisual Clip Management: Thumbnails and metadata for every clip enable quick identification, previewing, and organization.\n\nPowerful Search Tools: A robust search bar instantly locates clips across all connected EVS servers, with advanced filtering for precision.\n\nMulti-Window Workflow: Work seamlessly across multiple bins, playlists, and tasks in a flexible, multi-window environment.\n\nThis intuitive design ensures operators can navigate with ease, boosting productivity in high-pressure broadcast settings."
+    },
+    {
+      title: "Streamlined Content Control",
+      content: "IPDirector transforms media workflows by offering unparalleled flexibility in content management:\n\nEffortless File Operations: Ingest, export, and import files using familiar Windows-like logic, with drag-and-drop functionality between directories and servers.\n\nNetworked Access: Instantly access and manage clips across any connected EVS server, ensuring real-time collaboration.\n\nLive Editing & Replays: Edit clips, create slow-motion sequences, and manage assets on the fly, keeping your production dynamic and responsive.\n\nBy centralizing these functions, IPDirector frees creative teams to prioritize storytelling over file management."
+    },
+    {
+      title: "Advanced Timeline Editing with IP Edit",
+      content: "At the heart of IPDirector's creative power is IP Edit, a robust timeline editing tool that rivals top-tier non-linear editors while staying fully integrated with the EVS ecosystem. Key capabilities include:\n\nVisual Timeline: Arrange, trim, and combine clips directly on an intuitive timeline, designed for live production speed.\n\nInstant Previews: See edit results in real time, enabling fast decision-making in high-stakes environments.\n\nDrag-and-Drop Highlights: Build and refine highlight packages or full playlists with minimal effort, streamlining production workflows."
+    },
+    {
+      title: "Sophisticated Playlist Management",
+      content: "IPDirector and IP Edit elevate playlist creation with advanced features tailored for complex productions:\n\nDynamic Playlist Functions: Go beyond basic sequencing with tools for show rundowns, dynamic edits, and flexible playlist assembly.\n\nVirtual Elements: Incorporate placeholders, virtual clips, or dynamic elements into playlists for adaptable live production.\n\nColor Coding: Assign colors to clips and playlist segments to quickly identify key moments, transitions, or ad breaks.\n\nBreaks and Pauses: Insert breaks to control broadcast flow, ensuring seamless pacing.\n\nTimed Playback: Schedule clips or playlists to start automatically, ideal for automated rundowns or precise playout.\n\nComprehensive Editing: Use the timeline to edit individual clips or entire playlists, supporting advanced workflows like segmenting, merging, or refining highlight reels."
+    },
+    {
+      title: "The Heart of Live Production",
+      content: "With its blend of reliable hardware and innovative software, IPDirector serves as a creative hub within the EVS server network. Whether managing hundreds of clips, assembling highlight reels on the fly, or scheduling intricate playlists, IPDirector and IP Edit deliver unmatched efficiency and intuition. This powerful tool empowers broadcast teams to create compelling content with confidence, making it an indispensable asset for live production."
+    }
+  ];
+
+  const totalPages = ipDirectorContent.length;
+  const currentPageData = ipDirectorContent[currentPage];
 
   const flipToNext = () => {
     if (isFlipping || currentPage >= totalPages - 1) return;
@@ -74,8 +103,6 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
     setSoundEnabled(!soundEnabled);
   };
 
-  const currentPageData = pages[currentPage];
-
   // Animation transforms for simple page transition
   const pageTranslateX = flipAnimation.interpolate({
     inputRange: [-1, 0, 1],
@@ -122,7 +149,7 @@ export function FlipBook({ pages, onClose }: FlipBookProps) {
             <Text style={styles.pageContent}>{currentPageData?.content}</Text>
           </ScrollView>
           <Text style={styles.pageNumber}>
-            {currentPageData?.pageNumber} / {currentPageData?.totalPages}
+            {currentPage + 1} / {totalPages}
           </Text>
         </Animated.View>
       </View>
