@@ -69,9 +69,13 @@ class SoundManager {
       
       // Try multiple URL formats for maximum compatibility
       const soundUrls = [
+        '/click-sound.wav',           // New royalty-free sound (primary)
+        './click-sound.wav',          // Alternative path
         '/fin-click.wav',
         './fin-click.wav',
-        'https://github.com/szymbura/WisdomBoxFinal/raw/main/fin%20click.wav'
+        'https://github.com/szymbura/WisdomBoxFinal/raw/main/fin%20click.wav',
+        // Public domain backup sounds
+        'https://opengameart.org/sites/default/files/button-click.wav'
       ];
 
       let response: Response | null = null;
